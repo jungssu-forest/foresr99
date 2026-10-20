@@ -74,6 +74,20 @@ label.fl{font-size:19px;font-weight:700}
 #jump b{font-size:26px}
 #tb{position:fixed;right:calc(env(safe-area-inset-right,0px) + 12px);top:calc(env(safe-area-inset-top,0px) + 148px);z-index:4;display:flex;flex-direction:column;gap:8px}
 #tb .btn{width:46px;height:46px;font-size:21px}
+@media (orientation: landscape) and (max-height: 620px){
+  #tb{top:calc(env(safe-area-inset-top,0px) + 8px);right:calc(env(safe-area-inset-right,0px) + 136px);flex-direction:row}
+}
+@media (orientation: portrait){
+  #ctrl{bottom:calc(env(safe-area-inset-bottom,0px) + 82px)}
+}
+#hotbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 10px);z-index:4;
+  display:flex;gap:6px;padding:5px;background:rgba(14,24,16,.55);border-radius:14px}
+.slot{position:relative;width:52px;height:52px;border-radius:10px;border:2px solid rgba(255,255,255,.28);background:rgba(253,253,248,.12);
+  color:#fff8e8;font-family:inherit;font-weight:700;font-size:12px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:0;touch-action:none;line-height:1;cursor:pointer}
+.slot b{font-size:23px;line-height:1.15}
+.slot i{position:absolute;left:4px;top:2px;font-style:normal;font-size:10px;opacity:.7}
+.slot.sel{border-color:var(--ember);background:rgba(255,122,26,.4);box-shadow:0 0 0 2px rgba(255,122,26,.35)}
 .hide{display:none!important}
 #toasts{position:fixed;left:50%;top:calc(env(safe-area-inset-top,0px) + 132px);transform:translateX(-50%);
   z-index:5;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;width:90%}
@@ -150,6 +164,7 @@ h1 .num{display:inline-block;border:2.5px solid currentColor;border-radius:50%;w
 </div>
 
 <div id="tb" class="hide"><button class="btn hide" id="fsBtn" aria-label="전체 화면">⛶</button><button class="btn" id="sndBtn" aria-label="소리">🔊</button><button class="btn" id="exitBtn" aria-label="나가기">🚪</button></div>
+<div id="hotbar" class="hide"></div>
 <div id="toasts"></div>
 <div id="banner"></div>
 
@@ -160,7 +175,7 @@ h1 .num{display:inline-block;border:2.5px solid currentColor;border-radius:50%;w
     <div class="jobs">
       <button class="job" data-job="lumber"><span class="e">🪓</span><span>나무꾼<small>나무를 베면 통나무·묘목이 5개 나와요 (다른 직업은 3개)</small></span></button>
       <button class="job" data-job="doctor"><span class="e">🩺</span><span>의사<small>나와 친구를 치료할 수 있고, 쓰러지면 ‘치료하기’로 다시 일어나요</small></span></button>
-      <button class="job" data-job="hunter"><span class="e">🏹</span><span>사냥꾼<small>칼·도끼·활로 동물을 빨리 잡고, 톱으로 나무를 2배 빨리 베요</small></span></button>
+      <button class="job" data-job="hunter"><span class="e">🏹</span><span>사냥꾼<small>칼·활·톱을 가지고 있어요. 칼은 동물을 2배 세게, 톱은 나무를 2배 빨리!</small></span></button>
     </div>
     <button class="go hide" id="contBtn" style="margin-bottom:10px"></button>
     <button class="go" id="startBtn" disabled>직업을 고르세요</button>
@@ -271,7 +286,7 @@ const joyHome={x:0,y:0};
 function resize(){
   vw=innerWidth;vh=innerHeight;renderer.setSize(vw,vh,false);camera.aspect=vw/vh;camera.updateProjectionMatrix();
   dprMap=Math.min(window.devicePixelRatio||1,2);mm.width=Math.round(104*dprMap);mm.height=Math.round(104*dprMap);
-  joyHome.x=95;joyHome.y=vh-115;if(joy.id===null)placeJoy(joyHome.x,joyHome.y);
+  joyHome.x=95;joyHome.y=vh-(vw<vh?185:115);if(joy.id===null)placeJoy(joyHome.x,joyHome.y);
 }
 
 /* ===== 모델 도우미 ===== */
@@ -303,10 +318,19 @@ function avatar(o){
   if(o.hat){box(head,1.9,.15,1.9,o.hat,0,.65,0);box(head,1.2,.6,1.2,o.hat,0,.95,0)}
   if(o.beard)box(head,1.0,.5,.2,o.beard,0,-.45,.62);
   if(o.hood){box(head,1.45,1.45,.35,o.hood,0,.05,-.55);box(head,1.45,.3,1.45,o.hood,0,.72,0);box(head,.2,1.4,1.3,o.hood,-.68,0,0);box(head,.2,1.4,1.3,o.hood,.68,0,0)}
-  if(o.tool){const t=piv(armR,0,-1.75,0);box(t,.18,.18,2.2,'#7a5230',0,0,.7);box(t,.12,.75,.6,'#d5dbe0',0,.28,1.6)}
+  let tools=null;
+  if(o.tool){
+    tools={};const mkT=k=>{const t=piv(armR,0,-1.75,0);tools[k]=t;return t};
+    let t=mkT('axe');box(t,.18,.18,2.2,'#7a5230',0,0,.7);box(t,.12,.75,.6,'#d5dbe0',0,.28,1.6);
+    t=mkT('saw');box(t,.25,.4,.5,'#7a5230',0,0,.15);box(t,.06,.55,2.0,'#c9ced4',0,-.05,1.35);for(let i=0;i<6;i++)box(t,.07,.12,.12,'#9aa0a6',0,-.38,.55+i*.3);
+    t=mkT('knife');box(t,.2,.22,.5,'#3a2a1e',0,0,.2);box(t,.06,.26,1.0,'#e2e6ea',0,.02,.95);
+    t=mkT('bow');{const a=box(t,.12,1.1,.12,'#8a5a2b',0,.5,.45);a.rotation.x=.45;const c=box(t,.12,1.1,.12,'#8a5a2b',0,-.5,.45);c.rotation.x=-.45;box(t,.03,1.9,.03,'#eeeeee',0,0,.02)}
+    t=mkT('gun');box(t,.2,.32,1.5,'#3b3f44',0,.05,.75);box(t,.22,.42,.45,'#6b4423',0,-.12,-.05);box(t,.1,.1,.7,'#2a2d31',0,.12,1.75);
+    for(const k in tools)tools[k].visible=k==='axe';
+  }
   g.scale.setScalar(o.s||1);
   if(!o.noShadow)shadow(g,1.5);
-  return {g,b,legL,legR,armL,armR,head};
+  return {g,b,legL,legR,armL,armR,head,tools};
 }
 function animAvatar(a,t,moving,spd){const s=moving?Math.sin(t*spd)*.85:0;a.legL.rotation.x=s;a.legR.rotation.x=-s;a.armL.rotation.x=-s;a.armR.rotation.x=s}
 function legs4(b,c,w,h,y,xs,zs){const L=[];for(const x of [-xs,xs])for(const z of [-zs,zs]){const p=piv(b,x,y,z);box(p,w,h,w,c,0,-h/2,0);L.push(p)}return L}
@@ -498,7 +522,7 @@ function clearWorld(){
 function newGame(job,seed,mode){
   clearWorld();R={};outbox=[];outSeq=0;
   seed=(seed>>>0)||((Math.random()*4294967295)>>>0)||1;
-  G={job,mode,seed,t:0,day:1,night:false,
+  G={job,mode,seed,t:0,day:1,night:false,held:'axe',
     p:{x:rand(-5,5),y:0,z:12,vy:0,rot:Math.PI,hp:100,hunger:100,atk:0,swing:0,inv:0,hurt:0,shot:0,moving:false,down:0},
     inv:Object.fromEntries(INV_KEYS.map(k=>[k,0])),stash:Object.fromEntries(INV_KEYS.map(k=>[k,0])),
     cap:5,axe:'old',saw:false,ammo:0,rifle:false,healCd:0,reviveCd:0,
@@ -545,7 +569,21 @@ function newGame(job,seed,mode){
   for(let i=0;i<RN;i++)resetDrop(i,true);
 }
 const hasSaw=ac=>G.saw||(ac?ac.job:G.job)==='hunter';
-function chopHits(ac){return hasSaw(ac)?(G.axe==='good'?3:5):(G.axe==='good'?5:10)}
+function chopHits(ac,useSaw){return (useSaw&&hasSaw(ac))?(G.axe==='good'?3:5):(G.axe==='good'?5:10)}
+const TOOLS={axe:{e:'🪓',n:'도끼'},knife:{e:'🔪',n:'칼'},saw:{e:'🪚',n:'톱'},bow:{e:'🏹',n:'활'},gun:{e:'🔫',n:'총'}};
+const TOOL_KEYS=Object.keys(TOOLS);
+function toolList(){
+  const L=['axe'];if(G.job==='hunter')L.push('knife');if(hasSaw())L.push('saw');if(G.job==='hunter')L.push('bow');if(G.ammo>0)L.push('gun');
+  return L;
+}
+function setHeldModel(av,h){if(!av||!av.tools)return;for(const k in av.tools)av.tools[k].visible=k===h}
+let hotbarKey='';
+function renderHotbar(){
+  const L=toolList();if(!L.includes(G.held))G.held='axe';
+  const key=L.join(',')+'|'+G.held+'|'+G.axe+'|'+G.ammo;if(key===hotbarKey)return;hotbarKey=key;
+  $('hotbar').innerHTML=L.map((k,i)=>`<button class="slot${k===G.held?' sel':''}" data-t="${k}" aria-label="${TOOLS[k].n}"><i>${i+1}</i><b>${TOOLS[k].e}</b>${k==='gun'?G.ammo+'발':k==='axe'&&G.axe==='good'?'좋은 도끼':TOOLS[k].n}</button>`).join('');
+}
+function selectTool(k){if(!G||!toolList().includes(k)||G.held===k)return;G.held=k;sfx('pickup',.4);renderHotbar()}
 function pushWalls(e,r){
   const ey=e.y||0;
   for(const w of G.walls){
@@ -903,9 +941,11 @@ function actionInfo(){
   const dr=G.caves.find(c=>!c.open&&dist(p.x,p.z,c.dx,c.dz)<4.5);
   if(dr)return G.inv.key>0?{l:'문 열기',i:'🗝️',k:'door',o:dr}:{l:'열쇠 필요',i:'🔒',k:'locked'};
   const ch=G.chests.find(c=>!c.opened&&D(p,c)<4.5&&Math.abs((c.y||0)-p.y)<2.5);if(ch)return {l:'상자 열기',i:'🧰',k:'chest',o:ch};
-  const e=nearestHostile(3.2);if(e)return {l:'공격',i:G.job==='hunter'?'🔪':'🪓',k:'hit',o:e};
-  const t=nearestTree();if(t)return {l:'나무 베기',i:hasSaw()?'🪚':'🪓',k:'chop',o:t};
-  return {l:'휘두르기',i:'🪓',k:'swing'};
+  const h=G.held||'axe',hi=TOOLS[h].e;
+  if(h==='bow'||h==='gun')return {l:h==='gun'?`쏘기 · ${G.ammo}발`:'활 쏘기',i:hi,k:'shoot'};
+  const e=nearestHostile(3.2);if(e)return {l:'공격',i:hi,k:'hit',o:e};
+  const t=nearestTree();if(t)return h==='knife'?{l:'칼로는 못 베요',i:hi,k:'needaxe'}:{l:'나무 베기',i:hi,k:'chop',o:t};
+  return {l:'휘두르기',i:hi,k:'swing'};
 }
 function act(a){
   if(G.mode==='client'){outbox.push([++outSeq,...a]);if(outbox.length>12)outbox.shift();presT=0}
@@ -913,7 +953,8 @@ function act(a){
 }
 function doAction(held){
   if(!running||paused)return;const p=G.p;if(p.atk>0||p.down)return;
-  const a=actionInfo();if(held&&(a.k==='trade'||a.k==='chest'||a.k==='door'||a.k==='locked'||a.k==='stash'))return;
+  const a=actionInfo();if(held&&(a.k==='trade'||a.k==='chest'||a.k==='door'||a.k==='locked'||a.k==='stash'||a.k==='needaxe'))return;
+  if(a.k==='shoot'){shoot();return}
   p.atk=.32;
   if(a.k==='fire')return act(['fire']);
   if(a.k==='trade')return openShop();
@@ -921,9 +962,10 @@ function doAction(held){
   if(a.k==='chest')return act(['chest',G.chests.indexOf(a.o)]);
   if(a.k==='door')return act(['door',G.caves.indexOf(a.o)]);
   if(a.k==='locked'){toast('🔒 동굴 앞 곰과 늑대를 모두 물리치면 열쇠가 나와요');return}
+  if(a.k==='needaxe'){toast('🔪 칼로는 나무를 못 베요. 아래 칸에서 도끼나 톱을 골라요');return}
   p.swing=.22;sfx('swing',.7);
-  if(a.k==='hit'){p.rot=Math.atan2(a.o.x-p.x,a.o.z-p.z);act(['hit',a.o.id])}
-  else if(a.k==='chop'){p.rot=Math.atan2(a.o.x-p.x,a.o.z-p.z);act(['chop',a.o.id])}
+  if(a.k==='hit'){p.rot=Math.atan2(a.o.x-p.x,a.o.z-p.z);act(['hit',a.o.id,G.held])}
+  else if(a.k==='chop'){p.rot=Math.atan2(a.o.x-p.x,a.o.z-p.z);act(['chop',a.o.id,G.held])}
 }
 function perform(a,ac){
   if(!Array.isArray(a)||!G)return;
@@ -931,9 +973,9 @@ function perform(a,ac){
   if(ty==='fire'){if(dA(0,0)<14)feedFire();return}
   if(ty==='door'){const cv=G.caves[num(a[1],-1)];if(cv&&!cv.open&&G.inv.key>0&&dA(cv.dx,cv.dz)<8)openDoor(cv);return}
   if(ty==='chest'){const c=G.chests[num(a[1],-1)];if(c&&!c.opened&&dA(c.x,c.z)<8&&Math.abs((c.y||0)-ac.ty)<4)openChest(c);return}
-  if(ty==='hit'){const id=num(a[1],-1),e=hostiles().find(e=>e.id===id);if(e&&dA(e.x,e.z)<e.r+7)hitEnemy(e,ac.job==='hunter'?2:1,ac);return}
-  if(ty==='chop'){const t=G.tmap.get(num(a[1],-1));if(t&&dA(t.x,t.z)<9)chop(t,ac);return}
-  if(ty==='shoot'){fireShot(ac,num(a[1])/100,num(a[2])/100);return}
+  if(ty==='hit'){const id=num(a[1],-1),e=hostiles().find(e=>e.id===id);if(e&&dA(e.x,e.z)<e.r+7)hitEnemy(e,(a[2]==='knife'&&ac.job==='hunter')?2:1,ac);return}
+  if(ty==='chop'){if(a[2]==='knife')return;const t=G.tmap.get(num(a[1],-1));if(t&&dA(t.x,t.z)<9)chop(t,ac,a[2]==='saw');return}
+  if(ty==='shoot'){fireShot(ac,num(a[1])/100,num(a[2])/100,num(a[3])===1);return}
   if(ty==='eat'){const k=MEATS.find(k=>G.inv[k]>0);if(!k)return;G.inv[k]--;if(ac.key==='me')fed(k);else ev({k:'fed',to:ac.key,it:k});return}
   if(ty==='plant'){
     const x=clamp(num(a[1])/10,-195,195),z=clamp(num(a[2])/10,-195,195);
@@ -968,9 +1010,9 @@ function hitEnemy(e,dmg,ac){
 function dropSprite(type){const m=new THREE.Sprite(SPR[type]);m.scale.set(1.7,1.7,1);dyn.add(m);return m}
 function drop(type,x,z){const a=rand(0,6.28),s=rand(5,13);G.drops.push({id:G.nid++,type,x,z,vx:Math.cos(a)*s,vz:Math.sin(a)*s,age:0,m:dropSprite(type),ph:rand(0,6)})}
 function removeTreeLocal(t){const i=G.trees.indexOf(t);if(i>=0)G.trees.splice(i,1);removeTree(t);G.tmap.delete(t.id)}
-function chop(t,ac){
+function chop(t,ac,useSaw){
   t.dmg++;t.shake=.25;ev({k:'th',id:t.id,d:t.dmg});sfxAt('chop',t.x,t.z);
-  if(t.dmg>=chopHits(ac)){
+  if(t.dmg>=chopHits(ac,useSaw)){
     removeTreeLocal(t);ev({k:'tc',id:t.id});sfxAt('fall',t.x,t.z);
     if(t.id<G.initTid)G.rmIds.add(t.id);else G.added.delete(t.id);
     const n=ac.job==='lumber'?5:3;for(let i=0;i<n;i++)drop(Math.random()<.65?'log':'sapling',t.x,t.z);
@@ -983,19 +1025,20 @@ function feedFire(){
 }
 const arrowGeo=BG(.15,.15,1.6),bulletGeo=new THREE.SphereGeometry(.25,6,6);
 function projMesh(gun,dx,dz){const m=new THREE.Mesh(gun?bulletGeo:arrowGeo,gun?MBs('#ffe066'):M('#e8d5b0'));m.rotation.y=Math.atan2(dx,dz);dyn.add(m);return m}
-function fireShot(ac,dx,dz){
+function fireShot(ac,dx,dz,wantGun){
   const l=Math.hypot(dx,dz);if(l<.01)return;dx/=l;dz/=l;
-  if(!(G.ammo>0||ac.job==='hunter'))return;
-  const gun=G.ammo>0,sp=gun?90:60;if(gun)G.ammo--;
+  const gun=!!wantGun&&G.ammo>0;if(!gun&&ac.job!=='hunter')return;
+  const sp=gun?90:60;if(gun)G.ammo--;
   G.proj.push({id:G.nid++,x:ac.tx,z:ac.tz,y:ac.ty+2.6,vx:dx*sp,vz:dz*sp,life:gun?.7:.9,dmg:gun?3:2,gun,m:projMesh(gun,dx,dz),owner:ac});
 }
 function shoot(){
   if(!running||paused)return;const p=G.p;
-  if(p.shot>0||p.down||!(G.ammo>0||G.job==='hunter'))return;
+  const useGun=G.held==='gun'&&G.ammo>0,useBow=G.held==='bow'&&G.job==='hunter';
+  if(p.shot>0||p.down||!(useGun||useBow))return;
   const t=nearestHostile(55);let dx=Math.sin(p.rot),dz=Math.cos(p.rot);
   if(t){const d=D(t,p);dx=(t.x-p.x)/d;dz=(t.z-p.z)/d;p.rot=Math.atan2(dx,dz)}
-  p.shot=G.ammo>0?.35:.6;p.swing=.15;sfx(G.ammo>0?'gun':'bow');
-  act(['shoot',Math.round(dx*100),Math.round(dz*100)]);
+  p.shot=useGun?.35:.6;p.swing=.15;sfx(useGun?'gun':'bow');
+  act(['shoot',Math.round(dx*100),Math.round(dz*100),useGun?1:0]);
 }
 function eat(){
   if(!running||paused||G.p.down)return;
@@ -1067,14 +1110,14 @@ function end(win,msg){
   ['shop','revive','down','stashOv'].forEach(id=>$(id).classList.add('hide'));
   $('overTitle').textContent=win?'🎉 성공!':'😢 실패…';
   $('overMsg').textContent=msg+` (찾은 아이 ${G.target}/4 · 모닥불 Lv.${G.fire.lvl})`;
-  $('over').classList.remove('hide');$('hud').classList.add('hide');$('ctrl').classList.add('hide');$('joy').classList.add('hide');$('fsBtn').classList.add('hide');$('tb').classList.add('hide');updateContinue();
+  $('over').classList.remove('hide');$('hud').classList.add('hide');$('ctrl').classList.add('hide');$('joy').classList.add('hide');$('fsBtn').classList.add('hide');$('tb').classList.add('hide');$('hotbar').classList.add('hide');updateContinue();
   if(ROOM){const r=ROOM;ROOM=null;setTimeout(()=>r.leave().catch(()=>{}),900)}
 }
 $('againBtn').onclick=()=>{leaveRoom();updateContinue();$('over').classList.add('hide');$('lobby').classList.remove('hide')};
 function startPlaying(){
   running=true;paused=false;
   ['lobby','mp','over'].forEach(id=>$(id).classList.add('hide'));
-  $('hud').classList.remove('hide');$('ctrl').classList.remove('hide');$('joy').classList.remove('hide');$('fsBtn').classList.toggle('hide',!fsOK);$('tb').classList.remove('hide');
+  $('hud').classList.remove('hide');$('ctrl').classList.remove('hide');$('joy').classList.remove('hide');$('fsBtn').classList.toggle('hide',!fsOK);$('tb').classList.remove('hide');$('hotbar').classList.remove('hide');hotbarKey='';G.held=G.held||'axe';renderHotbar();
   banner(G.fire.lvl?'🌲 숲에 들어왔어요!':'🔥 모닥불이 꺼져 있어요! 통나무 10개를 모아요');
   setTimeout(()=>running&&toast('🧒 주황 화살표를 따라 아이를 찾아요'),3000);
 }
@@ -1263,7 +1306,7 @@ function isHostMsg(msg){
 }
 function sendPresence(){
   const p=G.p,fl=(p.moving?1:0)|(p.down?2:0)|(p.swing>0?4:0);
-  const o={n:nick,j:G.job,p:[q10(p.x),q10(p.y),q10(p.z),Math.round(p.rot*100),fl|(p.onGround?0:8),Math.max(0,Math.round(p.hp))]};
+  const o={n:nick,j:G.job,p:[q10(p.x),q10(p.y),q10(p.z),Math.round(p.rot*100),fl|(p.onGround?0:8),Math.max(0,Math.round(p.hp)),Math.max(0,TOOL_KEYS.indexOf(G.held))]};
   if(G.mode==='host')o.h=1;else{o.q=outbox;o.need=null}
   ROOM.presence(o).catch(()=>{});
 }
@@ -1285,7 +1328,7 @@ function updateRemotes(dt){
     }
     r.n=cleanName(pre.n);const pp=pre.p;
     r.tx=clamp(num(pp[0])/10,-200,200);r.ty=clamp(num(pp[1])/10,0,30);r.tz=clamp(num(pp[2])/10,-200,200);r.tr=num(pp[3])/100;
-    const fl=num(pp[4]);r.moving=!!(fl&1);r.down=!!(fl&2);r.swinging=!!(fl&4);r.air=!!(fl&8);r.hp=clamp(num(pp[5],100),0,100);
+    const fl=num(pp[4]);r.moving=!!(fl&1);r.down=!!(fl&2);r.swinging=!!(fl&4);r.air=!!(fl&8);r.hp=clamp(num(pp[5],100),0,100);r.held=TOOL_KEYS[num(pp[6])|0]||'axe';
     if(!r.ok){r.x=r.tx;r.y=r.ty;r.z=r.tz;r.rot=r.tr;r.ok=true}
     if(G.mode==='host'&&Array.isArray(pre.q)){
       for(const a of pre.q){if(!Array.isArray(a))continue;const s=num(a[0]);if(s>r.lastSeq){r.lastSeq=s;perform(a.slice(1),r)}}
@@ -1553,7 +1596,7 @@ addEventListener('keydown',e=>{
   const k=e.key.toLowerCase();keys[k]=true;if(!running)return;
   if(k===' '){e.preventDefault();jump()}
   if(k==='f'){if(!e.repeat)doAction();actHeld=true}
-  if(k==='r')shoot();if(k==='e')eat();if(k==='q')plant();if(k==='h')heal();
+  if(k==='r')shoot();if(/^[1-5]$/.test(k)){const L=toolList();if(L[+k-1])selectTool(L[+k-1])}if(k==='e')eat();if(k==='q')plant();if(k==='h')heal();
 });
 addEventListener('keyup',e=>{const k=e.key.toLowerCase();keys[k]=false;if(k==='f')actHeld=false});
 addEventListener('blur',()=>{keys={};actHeld=false});
@@ -1614,10 +1657,11 @@ $('quitYes').onclick=()=>{
   writeSave();
   if(host){ev({k:'over',w:0,m:'방장이 게임을 나갔어요.'});flushEv()}
   running=false;actHeld=false;paused=false;
-  ['shop','revive','down','stashOv','hud','ctrl','joy','tb'].forEach(id=>$(id).classList.add('hide'));
+  ['shop','revive','down','stashOv','hud','ctrl','joy','tb','hotbar'].forEach(id=>$(id).classList.add('hide'));
   setTimeout(leaveRoom,host?600:0);
   $('lobby').classList.remove('hide');updateContinue();
 };
+$('hotbar').addEventListener('pointerdown',e=>{const b=e.target.closest&&e.target.closest('.slot');if(!b)return;e.preventDefault();e.stopPropagation();selectTool(b.dataset.t)});
 bindBtn('act',()=>doAction(),true);bindBtn('jump',jump);bindBtn('bShoot',shoot);bindBtn('bEat',eat);bindBtn('bPlant',plant);bindBtn('bHeal',heal);
 document.addEventListener('contextmenu',e=>e.preventDefault());
 
@@ -1655,14 +1699,15 @@ function sync(dt){
   const av=playerAv;av.g.position.set(p.x,p.y,p.z);av.g.rotation.y=p.rot;
   animAvatar(av,t,p.moving&&p.onGround,11);
   if(!p.onGround){av.legL.rotation.x=-.5;av.legR.rotation.x=.4;av.armL.rotation.x=-2.6}
-  if(p.swing>0){av.armR.rotation.x=-2.6+(1-p.swing/.22)*2.4}
+  setHeldModel(av,G.held);if(G.held==='bow'||G.held==='gun'){av.armR.rotation.x=-1.5;if(G.held==='bow')av.armL.rotation.x=-1.5}
+  if(p.swing>0&&G.held!=='bow'&&G.held!=='gun'){av.armR.rotation.x=-2.6+(1-p.swing/.22)*2.4}
   av.g.rotation.x=p.down?-1.45:0;
   playerShadow.position.set(p.x,gy+.04,p.z);playerShadow.scale.setScalar(1.1/(1+(p.y-gy)*.15));
   for(const k in R){
     const r=R[k];if(!r.ok)continue;
     r.av.g.position.set(r.x,r.y,r.z);r.av.g.rotation.y=r.rot;r.av.g.rotation.x=r.down?-1.45:0;
     animAvatar(r.av,t,r.moving&&!r.air,11);if(r.air){r.av.legL.rotation.x=-.5;r.av.legR.rotation.x=.4}
-    if(r.swinging)r.av.armR.rotation.x=-2.2+Math.sin(t*20)*.6;
+    setHeldModel(r.av,r.held);if(r.held==='bow'||r.held==='gun')r.av.armR.rotation.x=-1.5;else if(r.swinging)r.av.armR.rotation.x=-2.2+Math.sin(t*20)*.6;
     r.sh.position.set(r.x,groundAt(r.x,r.z,r.y)+.04,r.z);
     if(D(r,p)<80){lab(r.x,r.y+(r.down?2.2:4.6),r.z,(r.down?'😵 ':'')+esc(r.n),'pl');if(r.hp<100&&!r.down&&D(r,p)<30)lab(r.x,r.y+5.4,r.z,hpHtml(r.hp,100),'hpb')}
   }
@@ -1704,7 +1749,7 @@ function sync(dt){
   for(const it of G.drops)it.m.position.set(it.x,1+Math.sin(t*3+it.ph)*.25,it.z);
   for(const b of G.proj)b.m.position.set(b.x,b.y,b.z);
   // 나무 진행 표시
-  for(const tr of G.trees)if(tr.dmg>0&&dist(tr.x,tr.z,p.x,p.z)<20){const h=chopHits();lab(tr.x,9.5*tr.s,tr.z,hpHtml(h-tr.dmg,h),'hpb t')}
+  for(const tr of G.trees)if(tr.dmg>0&&dist(tr.x,tr.z,p.x,p.z)<20){const h=chopHits(null,G.held==='saw');lab(tr.x,9.5*tr.s,tr.z,hpHtml(h-tr.dmg,h),'hpb t')}
   // 모닥불 라벨
   lab(0,5+G.fire.lvl*.8,0,G.fire.lvl>=FIRE_MAX?'🔥 모닥불 Lv.5 (최고)':`🔥 모닥불 Lv.${G.fire.lvl} · 🪵 ${G.fire.prog}/${FIRE_NEED[G.fire.lvl]}`,'fire');
   // 아이 화살표
@@ -1751,7 +1796,7 @@ function hud(){
   parts.push(G.axe==='good'?'🪓 좋은 도끼':'🪓 낡은 도끼');if(hasSaw())parts.push('🪚 톱');
   const h=parts.map(s=>`<span>${s}</span>`).join('');if(h!==lastHud){$('inv').innerHTML=h;lastHud=h}
   const a=actionInfo();if($('actTxt').textContent!==a.l){$('actTxt').textContent=a.l;$('actIco').textContent=a.i}
-  $('bShoot').classList.toggle('hide',!(G.ammo>0||G.job==='hunter'));
+  $('bShoot').classList.add('hide');renderHotbar();
   $('shootIco').textContent=G.ammo>0?'🔫':'🏹';$('shootTxt').textContent=G.ammo>0?`${G.ammo}발`:'활';
   $('bEat').classList.toggle('hide',!['bearMeat','wolfMeat','rabbitMeat'].some(k=>G.inv[k]>0));
   $('bPlant').classList.toggle('hide',!G.inv.sapling);
