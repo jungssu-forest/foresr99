@@ -149,7 +149,7 @@ h1 .num{display:inline-block;border:2.5px solid currentColor;border-radius:50%;w
   </div>
 </div>
 
-<div id="tb" class="hide"><button class="btn hide" id="fsBtn" aria-label="전체 화면">⛶</button><button class="btn" id="exitBtn" aria-label="나가기">🚪</button></div>
+<div id="tb" class="hide"><button class="btn hide" id="fsBtn" aria-label="전체 화면">⛶</button><button class="btn" id="sndBtn" aria-label="소리">🔊</button><button class="btn" id="exitBtn" aria-label="나가기">🚪</button></div>
 <div id="toasts"></div>
 <div id="banner"></div>
 
@@ -489,7 +489,7 @@ const q10=v=>Math.round(v*10),num=(v,d=0)=>{v=Number(v);return Number.isFinite(v
 const enc=new TextEncoder(),bytes=o=>enc.encode(JSON.stringify(o)).length;
 function mulberry(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
 function ev(o){if(G&&G.mode==='host')G.evq.push(o)}
-function say(m,big){(big?banner:toast)(m);ev({k:'m',m,b:big?1:0})}
+function say(m,big,snd){(big?banner:toast)(m);if(snd)sfx(snd);ev(snd?{k:'m',m,b:big?1:0,s:snd}:{k:'m',m,b:big?1:0})}
 
 function clearWorld(){
   while(dyn.children.length)dyn.remove(dyn.children[0]);
@@ -636,7 +636,7 @@ function addCave(cx,cz,rot,idx,kc){
 }
 function openDoorLocal(cv){if(!cv||cv.open)return;cv.open=true;G.walls=G.walls.filter(w=>w!==cv.doorRect)}
 function openDoor(cv){
-  G.inv.key--;openDoorLocal(cv);ev({k:'do',i:G.caves.indexOf(cv)});say('🚪 문이 열렸어요! 안에 아이가 있어요',1);
+  G.inv.key--;openDoorLocal(cv);ev({k:'do',i:G.caves.indexOf(cv)});say('🚪 문이 열렸어요! 안에 아이가 있어요',1,'door');
 }
 function openCaveChest(c){
   c.m.lid.rotation.x=-1.9;
@@ -646,7 +646,7 @@ function openCaveChest(c){
   else if(k==='goodSack'&&G.cap<10){G.cap=10;m='🎒 좋은 자루 (10개)'}
   else if(k==='giantSack'&&G.cap<25){G.cap=25;m='🎒 거대한 자루 (25개)'}
   else{G.ammo+=10;m='🎯 소총 탄약 10발'}
-  say('🧰 보물상자: '+m,1);
+  say('🧰 보물상자: '+m,1,'chest');
 }
 function openBldChest(c){
   c.m.lid.rotation.x=-1.9;const got=[];
@@ -656,7 +656,7 @@ function openBldChest(c){
     if(k==='saw'){if(G.saw){G.ammo+=5;got.push('🔫 탄약 5발')}else{G.saw=true;got.push('🪚 톱');say('톱이 있으면 나무를 2배 빨리 베요')}}
     if(k==='meat'){G.inv.bearMeat+=2;got.push('🍖 곰고기 2개')}
   }
-  say('🏚️ '+got.join(' + '),1);
+  say('🏚️ '+got.join(' + '),1,'chest');
 }
 function openChest(c){
   c.opened=true;ev({k:'co',i:G.chests.indexOf(c)});
@@ -679,7 +679,7 @@ function spawnCult(){
     const c={id:G.nid++,x:clamp(Math.cos(a)*d,-190,190),z:clamp(Math.sin(a)*d,-190,190),hp:3,max:3,cd:0,hit:0,dead:false,r:1.2,av,ry:0};
     av.g.position.set(c.x,0,c.z);dyn.add(av.g);G.cult.push(c);
   }
-  say(`😈 신도 ${n}명이 기지로 몰려와요!`,1);
+  say(`😈 신도 ${n}명이 기지로 몰려와요!`,1,'warn');
 }
 function spawnDeer(h){
   const ce=spawnCenter(),a=rand(0,Math.PI*2),d=rand(55,75);
@@ -717,22 +717,22 @@ function mkTrader(req){
   av.g.position.set(14,0,-4);av.g.rotation.y=-1.2;dyn.add(av.g);return {x:14,z:-4,av,req};
 }
 function onMorning(){
-  say(`☀️ ${G.day}일째 아침`);
+  say(`☀️ ${G.day}일째 아침`,0,'morning');
   G.rain=G.rainDays.has(G.day);if(G.rain)say('🌧️ 비가 와요!');
   if(G.cult.length){G.cult.forEach(removeEnt);G.cult=[];say('신도들이 숲으로 사라졌어요')}
   if(G.deer.length){G.deer.forEach(removeEnt);G.deer=[];say('🦌 사슴이 숲으로 돌아갔어요')}
-  if(G.day%5===0&&G.day<MAXDAY){G.trader=mkTrader(newReq());say('🧔 장사하는 아저씨가 기지에 왔어요!',1)}
-  if(G.day%10===0&&G.day<MAXDAY)say('⚠️ 오늘 밤 신도들이 기지를 습격해요! 모닥불을 지키세요',1);
+  if(G.day%5===0&&G.day<MAXDAY){G.trader=mkTrader(newReq());say('🧔 장사하는 아저씨가 기지에 왔어요!',1,'bell')}
+  if(G.day%10===0&&G.day<MAXDAY)say('⚠️ 오늘 밤 신도들이 기지를 습격해요! 모닥불을 지키세요',1,'warn');
   writeSave();
 }
 function onNight(){
-  say('🌙 밤이 됐어요. 모닥불 빛 안이 안전해요');
+  say('🌙 밤이 됐어요. 모닥불 빛 안이 안전해요',0,'night');
   if(G.trader){dyn.remove(G.trader.av.g);G.trader=null;say('🧔 아저씨가 떠났어요')}
   spawnDeer(false);
   const hungry=G.day>=3&&Math.random()<Math.min(.8,.3+G.day*.01);
   if(hungry)spawnDeer(true);
   if(G.day%10===0)setTimeout(()=>running&&G&&G.night&&spawnCult(),3200);
-  say(hungry?'🔴 배고픈 사슴이 나타났어요! 아주 빨라요!':'🦌 사슴이 나타났어요! 모닥불로 피해요',1);
+  say(hungry?'🔴 배고픈 사슴이 나타났어요! 아주 빨라요!':'🦌 사슴이 나타났어요! 모닥불로 피해요',1,'deer');
 }
 
 /* ===== 입력 ===== */
@@ -775,10 +775,10 @@ function die(){
   if(G.mode==='solo'){end(false,G.job==='doctor'?'쓰러졌어요… (치료하기는 2분에 한 번만 쓸 수 있어요)':'쓰러졌어요… 밤에는 모닥불 빛 안에 있어요.');return}
   p.down=10;$('down').classList.remove('hide');
 }
-function hurt(n){const p=G.p;if(p.inv>0||p.down)return;p.hp-=n;p.hurt=.3;p.inv=.4}
+function hurt(n){const p=G.p;if(p.inv>0||p.down)return;p.hp-=n;p.hurt=.3;p.inv=.4;sfx('hurt')}
 function fed(k){
   if(!ITEM[k]||!ITEM[k].food)return;const p=G.p;
-  p.hunger=Math.min(100,p.hunger+ITEM[k].food);p.hp=Math.min(100,p.hp+5);toast(`${ITEM[k].e} ${ITEM[k].n}를 먹었어요`);
+  p.hunger=Math.min(100,p.hunger+ITEM[k].food);p.hp=Math.min(100,p.hp+5);sfx('eat');toast(`${ITEM[k].e} ${ITEM[k].n}를 먹었어요`);
 }
 
 /* ===== 세상 움직이기 (혼자/방장) ===== */
@@ -807,7 +807,7 @@ function worldTick(dt){
     if(it.age<=.35)continue;
     const t=L.find(t=>dist(t.x,t.z,it.x,it.z)<3);if(!t)continue;
     if(ITEM[it.type].sack&&sackUsed()>=G.cap){if(G.t-G.fullMsg>3){say(`🎒 자루가 꽉 찼어요 (${G.cap}칸)`);G.fullMsg=G.t}continue}
-    G.inv[it.type]++;it.dead=true;dyn.remove(it.m);if(it.type==='key')say('🗝️ 열쇠를 주웠어요! 동굴 안 잠긴 문을 열어요');
+    G.inv[it.type]++;it.dead=true;dyn.remove(it.m);if(t.key==='me')sfx('pickup');if(it.type==='key')say('🗝️ 열쇠를 주웠어요! 동굴 안 잠긴 문을 열어요',0,'key');
   }
   G.drops=G.drops.filter(i=>!i.dead);
   for(const g of G.growing){
@@ -860,7 +860,7 @@ function worldTick(dt){
   G.proj=G.proj.filter(b=>!b.dead);
   G.animals=G.animals.filter(a=>{if(a.dead)removeEnt(a);return !a.dead});
   const had=G.cult.length;G.cult=G.cult.filter(c=>{if(c.dead)removeEnt(c);return !c.dead});
-  if(had&&!G.cult.length)say('🎉 신도들을 모두 물리쳤어요!',1);
+  if(had&&!G.cult.length)say('🎉 신도들을 모두 물리쳤어요!',1,'win');
   G.respawn-=dt;
   if(G.respawn<=0){G.respawn=5;for(const k in TARGET){const tg=TARGET[k]+(k==='wolf'&&G.night?8:0);if(G.animals.filter(a=>a.kind===k&&a.guard===undefined).length<tg)spawnAnimal(k)}}
   const kid=G.kids[G.target];
@@ -869,7 +869,7 @@ function worldTick(dt){
 function kidFoundLocal(kid,slot){if(!kid||kid.found)return;kid.found=true;kid.slot=slot;kid.x=-12+slot*8;kid.z=9}
 function findKid(kid){
   const i=G.kids.indexOf(kid);kidFoundLocal(kid,G.target);ev({k:'kf',i,s:kid.slot});
-  say(`🧒 ${kid.n}번 아이를 찾았어요!`,1);G.target++;
+  say(`🧒 ${kid.n}번 아이를 찾았어요!`,1,'kid');G.target++;
   if(G.target>=4&&!G.won){G.won=true;setTimeout(()=>running&&finish(true,`${G.day}일째에 아이 4명을 모두 구했어요!`),1600)}
   else say(`📍 이제 ${G.target+1}번 아이를 찾아요`);
 }
@@ -921,7 +921,7 @@ function doAction(held){
   if(a.k==='chest')return act(['chest',G.chests.indexOf(a.o)]);
   if(a.k==='door')return act(['door',G.caves.indexOf(a.o)]);
   if(a.k==='locked'){toast('🔒 동굴 앞 곰과 늑대를 모두 물리치면 열쇠가 나와요');return}
-  p.swing=.22;
+  p.swing=.22;sfx('swing',.7);
   if(a.k==='hit'){p.rot=Math.atan2(a.o.x-p.x,a.o.z-p.z);act(['hit',a.o.id])}
   else if(a.k==='chop'){p.rot=Math.atan2(a.o.x-p.x,a.o.z-p.z);act(['chop',a.o.id])}
 }
@@ -951,7 +951,7 @@ function perform(a,ac){
   if(ty==='heal'){if(ac.job!=='doctor')return;const to=String(a[1]);if(to===myPeer)receiveHeal();else if(R[to])ev({k:'heal',to});return}
 }
 function hitEnemy(e,dmg,ac){
-  ac=ac||meActor();
+  ac=ac||meActor();sfxAt('hit',e.x,e.z);
   const d=Math.max(.5,dist(e.x,e.z,ac.tx,ac.tz));e.x+=(e.x-ac.tx)/d*1.6;e.z+=(e.z-ac.tz)/d*1.6;e.hit=.2;
   if(e.deer){e.stun=3;if(ac.key==='me'&&!G.deerTip){G.deerTip=true;toast('사슴은 쓰러지지 않아요! 맞으면 잠깐 도망가요')}return}
   const isC=!e.kind;e.hp-=isC?1:dmg;
@@ -961,7 +961,7 @@ function hitEnemy(e,dmg,ac){
     if(e.kind==='rabbit'){drop('rabbitFoot',e.x,e.z);drop('rabbitMeat',e.x,e.z)}
     if(e.kind==='wolf'){drop('wolfPelt',e.x,e.z);drop('wolfMeat',e.x,e.z)}
     if(e.guard!==undefined){const cv=G.caves[e.guard];cv.guards--;
-      if(cv.guards<=0){drop('key',e.x,e.z);say('🗝️ 지킴이를 모두 물리쳤어요! 열쇠가 나왔어요',1)}
+      if(cv.guards<=0){drop('key',e.x,e.z);say('🗝️ 지킴이를 모두 물리쳤어요! 열쇠가 나왔어요',1,'key')}
       else say(`동굴 지킴이 ${cv.guards}마리 남았어요`)}
   }
 }
@@ -969,17 +969,17 @@ function dropSprite(type){const m=new THREE.Sprite(SPR[type]);m.scale.set(1.7,1.
 function drop(type,x,z){const a=rand(0,6.28),s=rand(5,13);G.drops.push({id:G.nid++,type,x,z,vx:Math.cos(a)*s,vz:Math.sin(a)*s,age:0,m:dropSprite(type),ph:rand(0,6)})}
 function removeTreeLocal(t){const i=G.trees.indexOf(t);if(i>=0)G.trees.splice(i,1);removeTree(t);G.tmap.delete(t.id)}
 function chop(t,ac){
-  t.dmg++;t.shake=.25;ev({k:'th',id:t.id,d:t.dmg});
+  t.dmg++;t.shake=.25;ev({k:'th',id:t.id,d:t.dmg});sfxAt('chop',t.x,t.z);
   if(t.dmg>=chopHits(ac)){
-    removeTreeLocal(t);ev({k:'tc',id:t.id});
+    removeTreeLocal(t);ev({k:'tc',id:t.id});sfxAt('fall',t.x,t.z);
     if(t.id<G.initTid)G.rmIds.add(t.id);else G.added.delete(t.id);
     const n=ac.job==='lumber'?5:3;for(let i=0;i<n;i++)drop(Math.random()<.65?'log':'sapling',t.x,t.z);
   }
 }
 function feedFire(){
   const f=G.fire;let put=0;
-  while(G.inv.log>0&&f.lvl<FIRE_MAX){G.inv.log--;f.prog++;put++;if(f.prog>=FIRE_NEED[f.lvl]){f.prog=0;f.lvl++;say(f.lvl===FIRE_MAX?'🔥 모닥불 최고 레벨 5 완성!':`🔥 모닥불 레벨 ${f.lvl}!`,1)}}
-  if(put)say(`🪵 통나무 ${put}개를 넣었어요`);
+  while(G.inv.log>0&&f.lvl<FIRE_MAX){G.inv.log--;f.prog++;put++;if(f.prog>=FIRE_NEED[f.lvl]){f.prog=0;f.lvl++;say(f.lvl===FIRE_MAX?'🔥 모닥불 최고 레벨 5 완성!':`🔥 모닥불 레벨 ${f.lvl}!`,1,'levelup')}}
+  if(put)say(`🪵 통나무 ${put}개를 넣었어요`,0,'feed');
 }
 const arrowGeo=BG(.15,.15,1.6),bulletGeo=new THREE.SphereGeometry(.25,6,6);
 function projMesh(gun,dx,dz){const m=new THREE.Mesh(gun?bulletGeo:arrowGeo,gun?MBs('#ffe066'):M('#e8d5b0'));m.rotation.y=Math.atan2(dx,dz);dyn.add(m);return m}
@@ -994,7 +994,7 @@ function shoot(){
   if(p.shot>0||p.down||!(G.ammo>0||G.job==='hunter'))return;
   const t=nearestHostile(55);let dx=Math.sin(p.rot),dz=Math.cos(p.rot);
   if(t){const d=D(t,p);dx=(t.x-p.x)/d;dz=(t.z-p.z)/d;p.rot=Math.atan2(dx,dz)}
-  p.shot=G.ammo>0?.35:.6;p.swing=.15;
+  p.shot=G.ammo>0?.35:.6;p.swing=.15;sfx(G.ammo>0?'gun':'bow');
   act(['shoot',Math.round(dx*100),Math.round(dz*100)]);
 }
 function eat(){
@@ -1021,7 +1021,7 @@ function receiveHeal(){
   if(p.down>0){p.down=0;p.hp=60;p.inv=2;$('down').classList.add('hide')}
   else if(p.down<0){p.down=0;p.hp=60;p.inv=2;$('revive').classList.add('hide');paused=false}
   else p.hp=Math.min(100,p.hp+35);
-  toast('🩺 의사 친구가 치료해 줬어요!');
+  toast('🩺 의사 친구가 치료해 줬어요!');sfx('key');
 }
 function heal(){
   if(!running||paused||G.job!=='doctor'||G.healCd>0||G.p.down)return;
@@ -1029,7 +1029,7 @@ function heal(){
   if(r){act(['heal',r.key]);G.healCd=25;toast(`🩺 ${r.n} 치료!`);return}
   G.p.hp=Math.min(100,G.p.hp+35);G.healCd=25;toast('🩹 치료했어요');
 }
-function jump(){if(!running||paused||G.p.down)return;if(G.p.onGround)G.p.vy=13}
+function jump(){if(!running||paused||G.p.down)return;if(G.p.onGround){G.p.vy=13;sfx('jump')}}
 
 /* ===== 상점 / 부활 / 끝 ===== */
 function newReq(){return {type:pick(['rabbitFoot','wolfPelt']),q:rint(1,2)}}
@@ -1366,9 +1366,9 @@ function applyEvs(msg){
   for(const e of l){
     if(!e||typeof e!=='object')continue;
     switch(e.k){
-      case 'm':(e.b?banner:toast)(String(e.m).slice(0,120));break;
-      case 'tc':{const t=G.tmap.get(num(e.id,-1));if(t)removeTreeLocal(t);break}
-      case 'th':{const t=G.tmap.get(num(e.id,-1));if(t){t.dmg=num(e.d);t.shake=.25}break}
+      case 'm':(e.b?banner:toast)(String(e.m).slice(0,120));if(typeof e.s==='string')sfx(e.s);break;
+      case 'tc':{const t=G.tmap.get(num(e.id,-1));if(t){sfxAt('fall',t.x,t.z);removeTreeLocal(t)}break}
+      case 'th':{const t=G.tmap.get(num(e.id,-1));if(t){t.dmg=num(e.d);t.shake=.25;sfxAt('chop',t.x,t.z)}break}
       case 'ta':{const g=G.growing.find(g=>g.id===num(e.g,-1));if(g){dyn.remove(g.m);G.growing.splice(G.growing.indexOf(g),1)}addTreeRec(e.r);break}
       case 'gr':if(Array.isArray(e.r))addGrowing(num(e.r[0]),num(e.r[1])/10,num(e.r[2])/10,clamp(num(e.r[3]),0,90));break;
       case 'co':{const c=G.chests[num(e.i,-1)];if(c&&!c.opened){c.opened=true;c.m.lid.rotation.x=-1.9}break}
@@ -1396,7 +1396,9 @@ function applySnap(msg){
   const t=num(s.t,G.t);if(Math.abs(t-G.t)>.6)G.t=t;else G.t+=(t-G.t)*.3;
   G.rain=!!s.r;
   if(Array.isArray(s.f)){G.fire.lvl=clamp(num(s.f[0])|0,0,FIRE_MAX);G.fire.prog=Math.max(0,num(s.f[1])|0)}
+  {const before=INV_KEYS.reduce((a,k)=>a+G.inv[k],0);
   if(Array.isArray(s.iv))INV_KEYS.forEach((k,i)=>G.inv[k]=Math.max(0,num(s.iv[i])|0));
+  if(INV_KEYS.reduce((a,k)=>a+G.inv[k],0)>before&&$('stashOv').classList.contains('hide')&&$('shop').classList.contains('hide'))sfx('pickup',.8)}
   if(Array.isArray(s.st))INV_KEYS.forEach((k,i)=>G.stash[k]=Math.max(0,num(s.st[i])|0));
   if(!$('stashOv').classList.contains('hide'))renderStash();
   G.cap=[5,10,25].includes(num(s.cp))?num(s.cp):G.cap;G.axe=s.ax?'good':'old';G.saw=!!s.sw;G.ammo=Math.max(0,num(s.am)|0);
@@ -1409,7 +1411,7 @@ function applySnap(msg){
     const x=clamp(num(it[2])/10,-200,200),z=clamp(num(it[3])/10,-200,200);
     let e=G.ents.get(id);if(!e||e.ty!==ty){if(e)removeEnt(e);e=makeMirror(id,ty,x,z);G.ents.set(id,e)}
     e.tx=x;e.tz=z;e.tr=num(it[4])/100;e.mv=!!num(it[6]);
-    if(e.deer)e.stun=num(it[5]);else{const hp=num(it[5]);if(hp<e.hp)e.hit=.2;e.hp=hp}
+    if(e.deer)e.stun=num(it[5]);else{const hp=num(it[5]);if(hp<e.hp){e.hit=.2;sfxAt('hit',e.tx,e.tz)}e.hp=hp}
     seen.add(id);
   }
   for(const [id,e] of G.ents)if(!seen.has(id)){removeEnt(e);G.ents.delete(id)}
@@ -1440,6 +1442,109 @@ function applySnap(msg){
     if(!G.trader)G.trader=mkTrader(req);else G.trader.req=req}
   else if(G.trader){dyn.remove(G.trader.av.g);G.trader=null}
   if(!$('shop').classList.contains('hide'))renderShop();
+}
+
+/* ===== 소리 (파일 없이 직접 만드는 효과음·배경음악) ===== */
+let AC=null,AU=null,soundMode=0;
+try{soundMode=clamp(parseInt(localStorage.getItem('forest99-sound')||'0',10)||0,0,2)}catch(_){}
+function audioInit(){
+  if(AC){if(AC.state==='suspended'&&soundMode<2)AC.resume().catch(()=>{});return}
+  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
+  try{AC=new C()}catch(_){AC=null;return}
+  const master=AC.createGain();master.gain.value=.9;master.connect(AC.destination);
+  const sfxG=AC.createGain();sfxG.connect(master);const musG=AC.createGain();musG.connect(master);
+  const delay=AC.createDelay(1);delay.delayTime.value=.375;const fb=AC.createGain();fb.gain.value=.3;const dl=AC.createGain();dl.gain.value=.35;
+  delay.connect(fb);fb.connect(delay);delay.connect(dl);dl.connect(musG);
+  const nb=AC.createBuffer(1,AC.sampleRate,AC.sampleRate),d=nb.getChannelData(0);for(let i=0;i<d.length;i++)d[i]=Math.random()*2-1;
+  AU={master,sfxG,musG,delay,noise:nb,next:0,steps:0,mel:3,fireT:0,ambT:2,deerT:0,rainT:0};
+  applySoundMode();
+}
+function applySoundMode(){
+  if(!AU)return;const t=AC.currentTime;
+  AU.sfxG.gain.setTargetAtTime(soundMode<2?1:0,t,.05);AU.musG.gain.setTargetAtTime(soundMode===0?1:0,t,.3);
+  if(soundMode===2)AC.suspend().catch(()=>{});else AC.resume().catch(()=>{});
+}
+['pointerdown','keydown','touchstart'].forEach(e=>document.addEventListener(e,audioInit,{capture:true,passive:true}));
+document.addEventListener('visibilitychange',()=>{if(!AC)return;if(document.visibilityState==='hidden')AC.suspend().catch(()=>{});else if(soundMode<2)AC.resume().catch(()=>{})});
+function tone(f,dur,o={}){
+  if(!AU||soundMode===2)return;const t=AC.currentTime+(o.at||0),vol=Math.max(o.vol??.2,.0002);
+  const os=AC.createOscillator(),g=AC.createGain();os.type=o.type||'sine';os.frequency.setValueAtTime(f,t);if(o.f2)os.frequency.exponentialRampToValueAtTime(o.f2,t+dur);
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+(o.att||.005));g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  os.connect(g);g.connect(AU.sfxG);os.start(t);os.stop(t+dur+.05);
+}
+function noise(dur,o={}){
+  if(!AU||soundMode===2)return;const t=AC.currentTime+(o.at||0),vol=Math.max(o.vol??.2,.0002);
+  const s=AC.createBufferSource();s.buffer=AU.noise;s.loop=true;const fl=AC.createBiquadFilter();fl.type=o.type||'bandpass';
+  fl.frequency.setValueAtTime(o.f||1000,t);if(o.f2)fl.frequency.exponentialRampToValueAtTime(o.f2,t+dur);fl.Q.value=o.q||1;
+  const g=AC.createGain();g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+(o.att||.003));g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  s.connect(fl);fl.connect(g);g.connect(AU.sfxG);s.start(t,Math.random()*.5);s.stop(t+dur+.05);
+}
+const SFX={
+  chop:v=>{noise(.12,{vol:.5*v,f:900,q:1.5});tone(140,.12,{type:'triangle',vol:.35*v,f2:70})},
+  fall:v=>{tone(220,.7,{type:'sawtooth',vol:.06*v,f2:90});noise(.5,{vol:.35*v,at:.55,type:'lowpass',f:500});tone(70,.4,{vol:.5*v,at:.55,f2:40})},
+  swing:v=>noise(.14,{vol:.16*v,type:'highpass',f:1500,f2:4000}),
+  hit:v=>{tone(180,.12,{type:'square',vol:.1*v,f2:80});noise(.08,{vol:.3*v,f:600})},
+  pickup:v=>{tone(880,.08,{vol:.14*v});tone(1320,.12,{vol:.14*v,at:.07})},
+  gun:v=>{noise(.18,{vol:.6*v,type:'lowpass',f:3000,f2:300});tone(90,.15,{vol:.4*v,f2:40})},
+  bow:v=>{tone(300,.25,{type:'triangle',vol:.2*v,f2:160});noise(.1,{vol:.12*v,type:'highpass',f:2500})},
+  chest:v=>{tone(330,.25,{type:'sawtooth',vol:.04*v,f2:260});[784,988,1175,1568].forEach((f,i)=>tone(f,.4,{vol:.12*v,at:.18+i*.08}))},
+  door:v=>{tone(110,.9,{type:'sawtooth',vol:.06*v,f2:70});noise(.6,{vol:.2*v,type:'lowpass',f:400})},
+  feed:v=>noise(.35,{vol:.3*v,type:'lowpass',f:400,f2:1800}),
+  levelup:v=>[523,659,784,1047].forEach((f,i)=>tone(f,.35,{type:'triangle',vol:.18*v,at:i*.1})),
+  kid:v=>[523,659,784,1047,784,1047].forEach((f,i)=>tone(f,.3,{type:'triangle',vol:.18*v,at:i*.12})),
+  hurt:v=>{tone(220,.2,{type:'square',vol:.12*v,f2:110});noise(.1,{vol:.25*v,f:500})},
+  jump:v=>tone(330,.15,{type:'triangle',vol:.1*v,f2:660}),
+  eat:v=>{for(let i=0;i<3;i++)noise(.06,{vol:.2*v,at:i*.12,f:1400,q:3})},
+  warn:v=>{for(let i=0;i<3;i++){tone(440,.28,{type:'square',vol:.07*v,at:i*.6});tone(330,.28,{type:'square',vol:.07*v,at:i*.6+.3})}},
+  deer:v=>{tone(98,1.6,{type:'sawtooth',vol:.08*v,f2:73});tone(147,1.6,{vol:.06*v,f2:110,at:.1})},
+  morning:v=>[659,784,988].forEach((f,i)=>tone(f,.5,{vol:.1*v,at:i*.15})),
+  night:v=>[392,330,262].forEach((f,i)=>tone(f,.6,{type:'triangle',vol:.1*v,at:i*.2})),
+  bell:v=>[1047,1319].forEach((f,i)=>tone(f,.8,{vol:.12*v,at:i*.25})),
+  key:v=>[1568,2093].forEach((f,i)=>tone(f,.25,{vol:.12*v,at:i*.08})),
+  win:v=>[392,523,659,784].forEach((f,i)=>tone(f,.3,{type:'triangle',vol:.15*v,at:i*.09})),
+  step:v=>{tone(60,.18,{vol:.6*v,f2:35});noise(.1,{vol:.25*v,type:'lowpass',f:300})},
+  crackle:v=>noise(.03,{vol:.22*v,type:'highpass',f:2000+Math.random()*3000}),
+  chirp:v=>{const f=2500+Math.random()*1500;tone(f,.08,{vol:.05*v,f2:f*1.3});tone(f*1.1,.08,{vol:.05*v,f2:f*1.4,at:.1})},
+  cricket:v=>{for(let i=0;i<3;i++)tone(4200,.03,{vol:.022*v,at:i*.05})},
+  rain:v=>noise(.25,{vol:.05*v,type:'highpass',f:3500})
+};
+function sfx(n,v=1){if(!AU||soundMode===2||!SFX[n]||v<=.01)return;try{SFX[n](v)}catch(_){}}
+function sfxAt(n,x,z,range=40){if(!G)return;const d=dist(x,z,G.p.x,G.p.z);if(d<range)sfx(n,Math.pow(1-d/range,1.3))}
+const MUS={
+  day:{prog:[[48,52,55],[45,48,52],[41,45,48],[43,47,50]],scale:[60,62,64,67,69,72,74,76],lp:1400,p:.5,beat:.75},
+  night:{prog:[[45,48,52],[41,45,48],[38,41,45],[40,44,47]],scale:[57,60,62,64,67,69,72],lp:650,p:.25,beat:.95}
+};
+const mf=m=>440*Math.pow(2,(m-69)/12);
+function padNote(f,dur,t,lp){
+  const o=AC.createOscillator(),g=AC.createGain(),fl=AC.createBiquadFilter();o.type='triangle';o.frequency.value=f;fl.type='lowpass';fl.frequency.value=lp;
+  g.gain.setValueAtTime(.0001,t);g.gain.linearRampToValueAtTime(.022,t+1.2);g.gain.setValueAtTime(.022,t+Math.max(1.3,dur-1));g.gain.linearRampToValueAtTime(.0001,t+dur+.3);
+  o.connect(fl);fl.connect(g);g.connect(AU.musG);o.start(t);o.stop(t+dur+.4);
+}
+function musNote(f,dur,t,type,vol,att,echo){
+  const o=AC.createOscillator(),g=AC.createGain();o.type=type;o.frequency.value=f;
+  g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+att);g.gain.exponentialRampToValueAtTime(.0001,t+dur);
+  o.connect(g);g.connect(AU.musG);if(echo)g.connect(AU.delay);o.start(t);o.stop(t+dur+.05);
+}
+function musicTick(){
+  if(!AU||soundMode!==0||AC.state!=='running')return;
+  const now=AC.currentTime;if(AU.next<now)AU.next=now+.1;
+  const m=G&&running&&G.night?MUS.night:MUS.day;
+  while(AU.next<now+.6){
+    const t=AU.next,bi=AU.steps%4,ch=m.prog[Math.floor(AU.steps/4)%4];
+    if(bi===0){ch.forEach(n=>padNote(mf(n+12),m.beat*4,t,m.lp));musNote(mf(ch[0]-12),m.beat*3.5,t,'sine',.07,.02,false)}
+    if(Math.random()<m.p){AU.mel=clamp(AU.mel+Math.floor(Math.random()*5)-2,0,m.scale.length-1);musNote(mf(m.scale[AU.mel]),1.2,t,'triangle',.045,.005,true)}
+    AU.steps++;AU.next+=m.beat;
+  }
+}
+function audioTick(dt){
+  if(!AU||soundMode===2)return;
+  musicTick();
+  if(!G||!running)return;const p=G.p;
+  if(G.fire.lvl){const d=Math.hypot(p.x,p.z);if(d<35){AU.fireT-=dt;if(AU.fireT<=0){AU.fireT=rand(.05,.35)/(1+G.fire.lvl*.2);sfx('crackle',(1-d/35)*(.4+G.fire.lvl*.12))}}}
+  AU.ambT-=dt;if(AU.ambT<=0){if(G.night){AU.ambT=rand(.5,1.4);sfx('cricket',.8)}else{AU.ambT=rand(2.5,7);if(!G.rain)sfx('chirp')}}
+  if(G.rain){AU.rainT-=dt;if(AU.rainT<=0){AU.rainT=.12;sfx('rain')}}
+  let nd=1e9,hd=false;for(const d of G.deer){const dd=D(d,p);if(dd<nd){nd=dd;hd=d.hungry}}
+  if(nd<60){AU.deerT-=dt;if(AU.deerT<=0){AU.deerT=hd?.28:.48;sfx('step',Math.pow(1-nd/60,1.5)*.9)}}
 }
 
 /* ===== 입력 연결 ===== */
@@ -1492,6 +1597,10 @@ document.addEventListener('fullscreenchange',()=>{fsUpd();setTimeout(resize,150)
 document.addEventListener('webkitfullscreenchange',()=>{fsUpd();setTimeout(resize,150)});
 const coarse=window.matchMedia&&matchMedia('(pointer: coarse)').matches;
 bindBtn('fsBtn',()=>{isFS()?exitFS():goFS()});
+const SND_ICON=['🔊','🔉','🔇'],SND_MSG=['🔊 소리 켜짐 (음악 + 효과음)','🔉 배경음악 끔 (효과음만)','🔇 소리 꺼짐'];
+$('sndBtn').textContent=SND_ICON[soundMode];
+bindBtn('sndBtn',()=>{soundMode=(soundMode+1)%3;try{localStorage.setItem('forest99-sound',String(soundMode))}catch(_){}
+  audioInit();applySoundMode();$('sndBtn').textContent=SND_ICON[soundMode];toast(SND_MSG[soundMode])});
 bindBtn('exitBtn',()=>{
   if(!running)return;actHeld=false;
   $('quitTxt').textContent=G.mode==='solo'?'지금까지 한 건 저장돼요. 다음에 첫 화면의 ‘이어하기’로 그날 아침부터 계속할 수 있어요.'
@@ -1660,6 +1769,7 @@ function loop(ts){
     if(live){clock+=dt;tick(dt)}
     if(G){sync(live?dt:0);labEnd();mapT-=dt;if(mapT<=0){mapT=.2;drawMap()}if(running)hud()}
   }else{camera.position.set(Math.sin(ts/6000)*40,18,Math.cos(ts/6000)*40);camera.lookAt(0,2,0)}
+  audioTick(dt);
   renderer.render(scene,camera);
   requestAnimationFrame(loop);
 }
