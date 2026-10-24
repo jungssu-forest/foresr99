@@ -733,7 +733,7 @@ const FH=4.5,NF=5;
 function addBuilding(bx,bz,rot,loot,o={}){
   const g=new THREE.Group();g.position.set(bx,0,bz);g.rotation.y=rot*Math.PI/2;dyn.add(g);
   const W=o.W||14,Dp=o.D||12,nf=o.nf||NF,T=.7,gap=3.4,TOP=nf*FH,IX=W/2-T/2,IZ=Dp/2-T/2,seg=(W-gap)/2;
-  const zs1=-IZ+2.85,SZ=(-IZ+zs1)/2,SW=zs1+IZ,xr0=-IX+1.15,xr1=xr0+9;
+  const RL=7.5,zs1=-IZ+3.1,SZ=(-IZ+zs1)/2,SW=zs1+IZ,xr0=-IX+2.6,xr1=xr0+RL;
   const wallMat=new THREE.MeshLambertMaterial({color:o.wall||'#6e6253',transparent:true,opacity:1});
   const winMat=o.glow?new THREE.MeshBasicMaterial({color:'#ff7a1a',transparent:true,opacity:1}):new THREE.MeshLambertMaterial({color:'#1c1a17',transparent:true,opacity:1});
   const slabMat=M(o.floor||'#7d6a55'),stepMat=M(o.step||'#8f6e47'),railMat=M('#4f463b'),roofMat=M(o.roof||'#5a4a3a');
@@ -755,14 +755,14 @@ function addBuilding(bx,bz,rot,loot,o={}){
     add(mk(IX-xr1,.3,SW,slabMat,(IX+xr1)/2,y-.15,SZ),y);
     add(mk(xr0+IX,.3,SW,slabMat,(-IX+xr0)/2,y-.15,SZ),y);
   }
-  for(let k=0;k<nf-1;k++){const y=k*FH;for(let i=0;i<9;i++)add(mk(1,.5,SW,stepMat,xr0+i+.5,y+(i+1)*.5-.25,SZ),y+i*.5)}
-  for(let k=0;k<nf;k++){const y=k*FH,x0=k===nf-1?-IX:xr0+.5,x1=xr1;add(mk(x1-x0,1.1,.15,railMat,(x0+x1)/2,y+.55,zs1),y);wall(x0,x1,zs1-.08,zs1+.08,y-.1,y+1.2)}
+  for(let k=0;k<nf-1;k++){const y=k*FH;for(let i=0;i<9;i++)add(mk(RL/9,.5,SW,stepMat,xr0+(i+.5)*RL/9,y+(i+1)*.5-.25,SZ),y+i*.5)}
+  for(let k=0;k<nf;k++){const y=k*FH,x0=k===nf-1?-IX:xr0+1.6,x1=xr1;add(mk(x1-x0,1.1,.15,railMat,(x0+x1)/2,y+.55,zs1),y);wall(x0,x1,zs1-.08,zs1+.08,y-.1,y+1.2)}
   add(mk(W+.6,.4,Dp+.6,roofMat,0,TOP+.2,0),TOP);
   const cx=IX-2.2,cz=IZ-3,ch=mkChest();ch.g.position.set(cx,(nf-1)*FH+.02,cz);ch.g.rotation.y=Math.PI;g.add(ch.g);add(ch.g,(nf-1)*FH);
   if(o.cult){box(ch.g,1.95,.12,1.3,'#f2c230',0,1.02,0)}
   const [chx,chz]=wp(cx,cz);
   G.chests.push({x:chx,z:chz,y:(nf-1)*FH,opened:false,m:ch,loot});
-  const b={x:bx,z:bz,c,s,up,mats:[wallMat,winMat],inside:false,ci:G.chests.length-1,ix:IX,iz:IZ,nf,zs1,xr0,xr1,r2:(W/2+1)**2+(Dp/2+1)**2,label:o.label||'🏚️ 낡은 건물',cult:!!o.cult};
+  const b={x:bx,z:bz,c,s,up,mats:[wallMat,winMat],inside:false,ci:G.chests.length-1,ix:IX,iz:IZ,nf,zs1,xr0,xr1,sl:FH/RL,r2:(W/2+1)**2+(Dp/2+1)**2,label:o.label||'🏚️ 낡은 건물',cult:!!o.cult};
   G.blds.push(b);return b;
 }
 const SNOW={x:180,z:-180,r:95},LAVA={x:-190,z:190,r:72};
@@ -842,8 +842,8 @@ function groundAt(x,z,y){
     const dx=x-b.x,dz=z-b.z;if(dx*dx+dz*dz>b.r2)continue;
     const lx=dx*b.c-dz*b.s,lz=dx*b.s+dz*b.c;if(Math.abs(lx)>b.ix||Math.abs(lz)>b.iz)continue;
     const inS=lz<b.zs1&&lx<b.xr1&&lx>b.xr0;
-    if(!inS)for(let k=1;k<b.nf;k++){const h=k*FH;if(h<=y+.7&&h>g)g=h}
-    else for(let k=0;k<b.nf-1;k++){const h=k*FH+clamp((lx-b.xr0)*.5,0,FH);if(h<=y+.7&&h>g)g=h}
+    if(!inS)for(let k=1;k<b.nf;k++){const h=k*FH;if(h<=y+1&&h>g)g=h}
+    else for(let k=0;k<b.nf-1;k++){const h=k*FH+clamp((lx-b.xr0)*b.sl,0,FH);if(h<=y+1&&h>g)g=h}
   }
   return g;
 }
