@@ -695,7 +695,7 @@ function addBuilding(bx,bz,rot,loot,o={}){
   for(let k=0;k<nf-1;k++){const y=k*FH;for(let i=0;i<9;i++)add(mk(1,.5,SW,stepMat,xr0+i+.5,y+(i+1)*.5-.25,SZ),y+i*.5)}
   for(let k=0;k<nf;k++){const y=k*FH,x0=k===nf-1?-IX:xr0+.5,x1=xr1;add(mk(x1-x0,1.1,.15,railMat,(x0+x1)/2,y+.55,zs1),y);wall(x0,x1,zs1-.08,zs1+.08,y-.1,y+1.2)}
   add(mk(W+.6,.4,Dp+.6,roofMat,0,TOP+.2,0),TOP);
-  const cx=IX-2.2,cz=IZ-3,ch=mkChest();ch.g.position.set(cx,(nf-1)*FH+.02,cz);ch.g.rotation.y=Math.PI;g.add(ch.g);
+  const cx=IX-2.2,cz=IZ-3,ch=mkChest();ch.g.position.set(cx,(nf-1)*FH+.02,cz);ch.g.rotation.y=Math.PI;g.add(ch.g);add(ch.g,(nf-1)*FH);
   if(o.cult){box(ch.g,1.95,.12,1.3,'#f2c230',0,1.02,0)}
   const [chx,chz]=wp(cx,cz);
   G.chests.push({x:chx,z:chz,y:(nf-1)*FH,opened:false,m:ch,loot});
@@ -940,7 +940,7 @@ function openStash(){paused=true;actHeld=false;renderStash();$('stashOv').classL
 $('stashList').onclick=e=>{const b=e.target&&e.target.closest&&e.target.closest('button[data-a]');if(b&&!b.disabled){act([b.dataset.a,b.dataset.k,b.dataset.n||'1']);if(G.mode==='client')setTimeout(()=>{if(!$('stashOv').classList.contains('hide'))renderStash()},400)}};
 $('stashClose').onclick=()=>{$('stashOv').classList.add('hide');paused=false};
 const fireR=()=>G.fire.lvl?14+5*G.fire.lvl:0;
-const sackUsed=(P=G.me)=>INV_KEYS.reduce((a,k)=>a+P.inv[k],0)+P.kids.length;
+const sackUsed=(P=G.me)=>INV_KEYS.reduce((a,k)=>a+(k==='key'?0:P.inv[k]),0)+P.kids.length;
 function nightAmt(){const ph=G.t%CYCLE;if(ph<DAY)return ph>54?(ph-54)/6:0;return ph>114?1-(ph-114)/6:1}
 function mkTrader(req){
   const av=avatar({skin:'#e8b98a',shirt:'#8a5a2b',pants:'#3b3b3b',arm:'#8a5a2b',hat:'#5a3a1e',beard:'#6b4a2b',s:.8});
@@ -1054,7 +1054,7 @@ function worldTick(dt){
     if(it.age<=.35)continue;
     const t=L.find(t=>dist(t.x,t.z,it.x,it.z)<3);if(!t)continue;
     const P=pOf(t),tac={key:t.key};
-    if(sackUsed(P)>=P.cap){if(G.t-P.fullT>3){pm(tac,`🎒 자루가 꽉 찼어요 (${P.cap}칸)`);P.fullT=G.t}continue}
+    if(it.type!=='key'&&sackUsed(P)>=P.cap){if(G.t-P.fullT>3){pm(tac,`🎒 자루가 꽉 찼어요 (${P.cap}칸)`);P.fullT=G.t}continue}
     P.inv[it.type]++;it.dead=true;dyn.remove(it.m);if(t.key==='me')sfx('pickup');if(it.type==='key')pm(tac,'🗝️ 열쇠를 주웠어요! 동굴 안 잠긴 문을 열어요',0,'key');
   }
   G.drops=G.drops.filter(i=>!i.dead);
