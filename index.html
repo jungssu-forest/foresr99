@@ -509,7 +509,7 @@ const ITEM={
   bearPelt:{n:'곰가죽',e:'🐻'},bearMeat:{n:'곰고기',e:'🍖',food:40},
   rabbitFoot:{n:'토끼발',e:'🐾'},rabbitMeat:{n:'토끼고기',e:'🍗',food:20},
   wolfPelt:{n:'늑대가죽',e:'🐺'},wolfMeat:{n:'늑대고기',e:'🥩',food:30},key:{n:'열쇠',e:'🗝️'},
-  scrap:{n:'고철',e:'🔩'},mammothMeat:{n:'매머드고기',e:'🥓',food:50}
+  scrap:{n:'고철',e:'🔩'},mammothMeat:{n:'매머드고기',e:'🥓',food:50},bandage:{n:'붕대',e:'🩹'}
 };
 const INV_KEYS=Object.keys(ITEM),MEATS=['bearMeat','wolfMeat','rabbitMeat','mammothMeat'];
 const SPR={};for(const k in ITEM)SPR[k]=emojiMat(ITEM[k].e);
@@ -807,6 +807,7 @@ function giveLoot(P,list){
     else if(k==='sack'){const m=sackUp(P);if(m)got.push(m)}
     else if(k==='meat'){P.inv.bearMeat+=2;got.push('🍖 곰고기 2개')}
     else if(k==='scrap'){P.inv.scrap+=3;got.push('🔩 고철 3개')}
+    else if(k==='bandage'){const n=rint(1,2);P.inv.bandage+=n;got.push(`🩹 붕대 ${n}개`)}
   }
   return got;
 }
@@ -818,6 +819,7 @@ function openChest(c,ac){
   else if(c.loot==='play')list=['scrap',pick(['sack','ammo','meat'])];
   else list=[...c.loot];
   if(!list.includes('sack')&&Math.random()<.5)list.push('sack');
+  if(Math.random()<.45)list.push('bandage');
   const got=giveLoot(P,list);
   pm(ac,'🧰 보물상자: '+(got.join(' + ')||'텅 비었어요'),1,'chest');
 }
@@ -1013,7 +1015,7 @@ function die(){
   if(G.job==='doctor'&&G.reviveCd<=0){p.down=-1;if(G.mode==='solo')paused=true;$('revive').classList.remove('hide');return}
   if(G.mode==='solo'){end(false,G.job==='doctor'?'쓰러졌어요… (치료하기는 2분에 한 번만 쓸 수 있어요)':'쓰러졌어요… 밤에는 모닥불 빛 안에 있어요.');return}
   if(!p.usedRespawn){p.usedRespawn=true;p.down=10;$('downTitle').textContent='😵 쓰러졌어요!'}
-  else{p.down=-2;$('downTitle').textContent='😵 쓰러졌어요!';$('downTxt').textContent='모닥불로 돌아가는 건 처음 한 번뿐이에요. 🩺 의사 친구가 와서 치료해 줘야 일어날 수 있어요.'}
+  else{p.down=-2;$('downTitle').textContent='😵 쓰러졌어요!';$('downTxt').textContent='모닥불로 돌아가는 건 처음 한 번뿐이에요. 🩺 의사 친구나 🩹 붕대를 가진 친구가 와서 치료해 줘야 일어날 수 있어요.'}
   $('down').classList.remove('hide');
 }
 function hurt(n){const p=G.p;if(p.inv>0||p.down)return;p.hp-=n;p.hurt=.3;p.inv=.4;sfx('hurt')}
@@ -1283,6 +1285,8 @@ function perform(a,ac){
     removeFurnLocal(f.id);P.carry=f.type;ev({k:'fr',id:f.id});pm(ac,`🙌 ${FURN[f.type].e} ${FURN[f.type].n}를 들었어요`);return;
   }
   if(ty==='torch'){const f=G.furn.find(f=>f.id===num(a[1],-1));if(!f||f.type!=='torch'||dA(f.x,f.z)>6)return;f.on=f.on===false;torchVis(f);ev({k:'ft',id:f.id,on:f.on?1:0});return}
+  if(ty==='bandage'){if(P.inv.bandage<=0)return;const to=String(a[1]);const tr=to===myPeer?{x:G.p.x,z:G.p.z}:R[to]?{x:R[to].tx,z:R[to].tz}:null;if(!tr||dA(tr.x,tr.z)>9)return;
+    P.inv.bandage--;if(to===myPeer)receiveHeal('b');else ev({k:'heal',to,b:1});return}
   if(ty==='heal'){if(ac.job!=='doctor')return;const to=String(a[1]);if(to===myPeer)receiveHeal();else if(R[to])ev({k:'heal',to});return}
 }
 function hitEnemy(e,dmg,ac){
@@ -1353,23 +1357,27 @@ function plant(){
   act(['plant',q10(x),q10(z)]);
 }
 function healTarget(){
-  if(!G||G.mode==='solo'||G.job!=='doctor')return null;let best=null,bd=6;
+  if(!G||G.mode==='solo'||!(G.job==='doctor'||G.inv.bandage>0))return null;let best=null,bd=6;
   for(const k in R){const r=R[k];if(!r.ok)continue;const d=dist(r.x,r.z,G.p.x,G.p.z);if(d<bd&&Math.abs(r.y-G.p.y)<3&&(r.down||r.hp<95)){bd=d;best=r}}
   return best;
 }
-function receiveHeal(){
+function receiveHeal(by){
   const p=G.p;
   p.hunger=Math.max(p.hunger,40);
   if(p.down>0){p.down=0;p.hp=60;p.inv=2;$('down').classList.add('hide')}
   else if(p.down<0){p.down=0;p.hp=60;p.inv=2;$('revive').classList.add('hide');$('down').classList.add('hide');paused=false}
   else p.hp=Math.min(100,p.hp+35);
-  toast('🩺 의사 친구가 치료해 줬어요!');sfx('key');
+  toast(by==='b'?'🩹 친구가 붕대로 치료해 줬어요!':'🩺 의사 친구가 치료해 줬어요!');sfx('key');
 }
 function heal(){
-  if(!running||paused||G.job!=='doctor'||G.healCd>0||G.p.down)return;
+  if(!running||paused||G.p.down)return;
   const r=healTarget();
-  if(r){act(['heal',r.key]);G.healCd=25;toast(`🩺 ${r.n} 치료!`);return}
-  G.p.hp=Math.min(100,G.p.hp+35);G.healCd=25;toast('🩹 치료했어요');
+  if(G.job==='doctor'&&G.healCd<=0){
+    if(r){act(['heal',r.key]);G.healCd=25;toast(`🩺 ${r.n} 치료!`);return}
+    G.p.hp=Math.min(100,G.p.hp+35);G.healCd=25;toast('🩹 치료했어요');return;
+  }
+  if(r&&G.inv.bandage>0){act(['bandage',r.key]);toast(`🩹 붕대로 ${r.n} 치료!`);return}
+  if(G.job==='doctor')toast(`🩺 ${Math.ceil(G.healCd)}초 뒤에 다시 치료할 수 있어요`);
 }
 function jump(){if(!running||paused||G.p.down)return;if(G.p.sit){G.p.sit=null;return}if(G.p.onGround){G.p.vy=13;sfx('jump')}}
 
@@ -1496,6 +1504,7 @@ function writeSave(){
 function applySave(sv){
   const day=clamp(num(sv.day,1)|0,1,MAXDAY);G.t=(day-1)*CYCLE;G.day=day;G.night=false;
   if(Array.isArray(sv.fire)){G.fire.lvl=clamp(num(sv.fire[0])|0,0,FIRE_MAX);G.fire.prog=Math.max(0,num(sv.fire[1])|0)}
+  if(Array.isArray(sv.me)&&sv.me.length===INV_KEYS.length+7)sv.me.splice(INV_KEYS.length-1,0,0);
   unpackP(G.me,sv.me);G.me.kids=[];
   if(Array.isArray(sv.fs))FKEYS.forEach((k,i)=>G.fstash[k]=Math.max(0,num(sv.fs[i])|0));
   if(Array.isArray(sv.is))INV_KEYS.forEach((k,i)=>G.istash[k]=Math.max(0,num(sv.is[i])|0));
@@ -1785,7 +1794,7 @@ function applyEvs(msg){
       case 'kc':{const kd=G.kids[num(e.i,-1)];if(kd)kd.carried=!!e.c;break}
       case 'ft':{const f=G.furn.find(f=>f.id===num(e.id,-1));if(f){f.on=!!e.on;torchVis(f)}break}
       case 'pm':if(e.to===myPeer){(e.b?banner:toast)(String(e.m).slice(0,100));if(typeof e.s==='string')sfx(e.s)}break;
-      case 'heal':if(e.to===myPeer)receiveHeal();break;
+      case 'heal':if(e.to===myPeer)receiveHeal(e.b?'b':'');break;
       case 'sk':if(e.to===myPeer)$('shopMsg').textContent=String(e.m).slice(0,80);break;
       case 'over':if(Array.isArray(e.st))G.stats={trees:num(e.st[0])|0,kills:num(e.st[1])|0,furn:num(e.st[2])|0};end(!!e.w,String(e.m).slice(0,120));return;
     }
@@ -2192,8 +2201,8 @@ function hud(){
   $('shootIco').textContent=G.ammo>0?'🔫':'🏹';$('shootTxt').textContent=G.ammo>0?`${G.ammo}발`:'활';
   $('bEat').classList.toggle('hide',!MEATS.some(k=>G.inv[k]>0));
   $('bPlant').classList.toggle('hide',!G.inv.sapling);{const nf=furnNear();$('bFurn').classList.toggle('hide',!(G.carry||nf));const lb=G.carry?`<b>${FURN[G.carry].e}</b>놓기`:nf?'<b>🙌</b>들기':'';if($('bFurn').innerHTML!==lb)$('bFurn').innerHTML=lb}
-  $('bHeal').classList.toggle('hide',G.job!=='doctor');$('bHeal').disabled=G.healCd>0;
-  $('healTxt').textContent=G.healCd>0?`${Math.ceil(G.healCd)}초`:(healTarget()?'친구':'치료');
+  {const ht=healTarget();$('bHeal').classList.toggle('hide',!(G.job==='doctor'||(G.inv.bandage>0&&ht)));$('bHeal').disabled=G.job==='doctor'&&G.healCd>0&&!(G.inv.bandage>0&&ht)}
+  $('healTxt').textContent=G.job!=='doctor'||G.healCd>0&&G.inv.bandage>0&&healTarget()?`붕대 ${G.inv.bandage}`:G.healCd>0?`${Math.ceil(G.healCd)}초`:(healTarget()?'친구':'치료');
   $('mmLabel').textContent=`🧒 ${G.target}/4`+(G.mode!=='solo'?` · 👫 ${Object.keys(R).length+1}`:'');
 }
 
