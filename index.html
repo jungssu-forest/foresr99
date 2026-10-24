@@ -212,15 +212,15 @@ h1 .num{display:inline-block;border:2.5px solid currentColor;border-radius:50%;w
 
 <div class="ov dim hide" id="down">
   <div class="paper">
-    <h1>😵 쓰러졌어요!</h1>
+    <h1 id="downTitle">😵 쓰러졌어요!</h1>
     <p class="lead" id="downTxt"></p>
   </div>
 </div>
 
 <div class="ov dim hide" id="stashOv">
   <div class="paper">
-    <h1>📦 가구 보관함</h1>
-    <p class="help">가구만 넣어 둘 수 있어요. 다른 물건은 모두 자루에 들어가요.</p>
+    <h1>📦 기지 보관함</h1>
+    <p class="help">넣고 싶은 물건을 골라서 넣고, 필요할 때 꺼내 가요.</p>
     <div id="stashList"></div>
     <button class="go ghost" id="stashClose">닫기</button>
   </div>
@@ -567,7 +567,7 @@ function newGame(job,seed,mode){
   seed=(seed>>>0)||((Math.random()*4294967295)>>>0)||1;
   G={job,mode,seed,t:0,day:1,night:false,held:'axe',me:newP(),
     p:{x:rand(-5,5),y:0,z:12,vy:0,rot:Math.PI,hp:100,hunger:100,atk:0,swing:0,inv:0,hurt:0,shot:0,moving:false,down:0,sit:null},
-    fstash:Object.fromEntries(FKEYS.map(k=>[k,0])),furn:[],fid:1,stats:{trees:0,kills:0,furn:0},
+    fstash:Object.fromEntries(FKEYS.map(k=>[k,0])),istash:Object.fromEntries(INV_KEYS.map(k=>[k,0])),furn:[],fid:1,stats:{trees:0,kills:0,furn:0},
     healCd:0,reviveCd:0,shineCd:0,
     fire:{lvl:0,prog:0},trees:[],growing:[],animals:[],cult:[],deer:[],proj:[],drops:[],kids:[],chests:[],
     trader:null,target:0,walls:[],blds:[],caves:[],lava:[],fountains:[],play:null,rain:false,rainDays:new Set(),respawn:0,won:false,deerTip:false,zone:'',lavaT:0,
@@ -923,15 +923,19 @@ $('craftList').onclick=e=>{
 };
 function pm(ac,m,big,snd){if(!ac||ac.key==='me'){(big?banner:toast)(m);if(snd)sfx(snd)}else ev(snd?{k:'pm',to:ac.key,m,b:big?1:0,s:snd}:{k:'pm',to:ac.key,m,b:big?1:0})}
 function renderStash(){
-  const L=$('stashList'),rows=FKEYS.filter(k=>G.fstash[k]>0);let h='';
+  const L=$('stashList'),mine=INV_KEYS.filter(k=>G.inv[k]>0),inS=INV_KEYS.filter(k=>G.istash[k]>0),fur=FKEYS.filter(k=>G.fstash[k]>0),room=G.cap-sackUsed();
+  let h=`<p class="help">🎒 내 자루 ${sackUsed()}/${G.cap}칸</p>`;
+  h+='<p class="help" style="margin:8px 0 0"><b>내 자루 → 보관함</b></p>';
+  h+=mine.length?mine.map(k=>`<div class="srow"><span class="nm">${itemLabel(k)} <span class="ct">×${G.inv[k]}</span></span><button class="sbtn" data-a="iput" data-k="${k}" data-n="1">⬇ 1개</button><button class="sbtn" data-a="iput" data-k="${k}" data-n="all">⬇ 모두</button></div>`).join(''):'<p class="help">자루가 비어 있어요.</p>';
+  h+='<p class="help" style="margin:12px 0 0"><b>보관함 → 내 자루</b></p>';
+  h+=inS.length?inS.map(k=>`<div class="srow"><span class="nm">${itemLabel(k)} <span class="ct">×${G.istash[k]}</span></span><button class="sbtn" data-a="itake" data-k="${k}" data-n="1" ${room>0?'':'disabled'}>⬆ 1개</button><button class="sbtn" data-a="itake" data-k="${k}" data-n="all" ${room>0?'':'disabled'}>⬆ 모두</button></div>`).join(''):'<p class="help">보관함에 물건이 없어요.</p>';
+  h+='<p class="help" style="margin:12px 0 0"><b>가구</b></p>';
   if(G.carry)h+=`<div class="srow"><span class="nm">🙌 들고 있는 ${FURN[G.carry].e} ${FURN[G.carry].n}</span><button class="sbtn" data-a="fput">⬇ 넣기</button></div>`;
-  if(rows.length)h+=rows.map(k=>`<div class="srow"><span class="nm">${FURN[k].e} ${FURN[k].n} ×${G.fstash[k]}</span><button class="sbtn" data-a="ftake" data-k="${k}" ${G.carry?'disabled':''}>🙌 들기</button></div>`).join('');
-  if(!h)h='<p class="help">가구 보관함이 비어 있어요. 🔨 작업대에서 가구를 만들면 여기에 들어와요.</p>';
-  else h+='<p class="help">가구를 들고 나가서, 놓고 싶은 곳에서 🪑 놓기 버튼을 눌러요.</p>';
+  h+=fur.length?fur.map(k=>`<div class="srow"><span class="nm">${FURN[k].e} ${FURN[k].n} ×${G.fstash[k]}</span><button class="sbtn" data-a="ftake" data-k="${k}" ${G.carry?'disabled':''}>🙌 들기</button></div>`).join(''):(G.carry?'':'<p class="help">작업대에서 가구를 만들면 여기에 들어와요.</p>');
   L.innerHTML=h;
 }
 function openStash(){paused=true;actHeld=false;renderStash();$('stashOv').classList.remove('hide')}
-$('stashList').onclick=e=>{const b=e.target&&e.target.closest&&e.target.closest('button[data-a]');if(b&&!b.disabled){act([b.dataset.a,b.dataset.k]);if(G.mode==='client')setTimeout(()=>{if(!$('stashOv').classList.contains('hide'))renderStash()},400)}};
+$('stashList').onclick=e=>{const b=e.target&&e.target.closest&&e.target.closest('button[data-a]');if(b&&!b.disabled){act([b.dataset.a,b.dataset.k,b.dataset.n||'1']);if(G.mode==='client')setTimeout(()=>{if(!$('stashOv').classList.contains('hide'))renderStash()},400)}};
 $('stashClose').onclick=()=>{$('stashOv').classList.add('hide');paused=false};
 const fireR=()=>G.fire.lvl?14+5*G.fire.lvl:0;
 const sackUsed=(P=G.me)=>INV_KEYS.reduce((a,k)=>a+P.inv[k],0)+P.kids.length;
@@ -972,7 +976,7 @@ function localPlayer(dt){
   if(p.down<0)return;
   if(p.down>0){
     p.down-=dt;$('downTxt').textContent=`${Math.max(0,Math.ceil(p.down))}초 뒤 모닥불에서 다시 일어나요`;
-    if(p.down<=0){p.down=0;p.hp=60;p.hunger=Math.max(p.hunger,40);{const bed=G.furn.find(f=>f.type==='bed');if(bed){p.x=bed.x+Math.cos(bed.ry)*1.8;p.z=bed.z-Math.sin(bed.ry)*1.8}else{p.x=rand(-5,5);p.z=10}}p.y=0;p.inv=2;$('down').classList.add('hide');toast('다시 일어났어요!')}
+    if(p.down<=0){p.down=0;p.hp=60;p.hunger=Math.max(p.hunger,40);toast('🔥 모닥불에서 일어났어요. 다음에 쓰러지면 의사 친구가 치료해 줘야 해요!');{const bed=G.furn.find(f=>f.type==='bed');if(bed){p.x=bed.x+Math.cos(bed.ry)*1.8;p.z=bed.z-Math.sin(bed.ry)*1.8}else{p.x=rand(-5,5);p.z=10}}p.y=0;p.inv=2;$('down').classList.add('hide');toast('다시 일어났어요!')}
     return;
   }
   let ix=0,iy=0;
@@ -998,7 +1002,7 @@ function localPlayer(dt){
   if(zn!==G.zone){G.zone=zn;if(zn==='snow')toast('❄️ 눈 덮인 숲이에요. 추워서 배가 빨리 고파져요');if(zn==='lava')banner('🌋 용암 지대! 신도의 집과 용암 매머드를 조심하세요')}
   p.hunger=Math.max(0,p.hunger-dt*(zn==='snow'?.65:.4));
   if(p.y<.5&&G.lava.some(l=>dist(l.x,l.z,p.x,p.z)<l.r)){p.hp-=18*dt;p.hurt=.15;if(G.t-G.lavaT>2.5){G.lavaT=G.t;toast('🔥 앗 뜨거! 용암이에요');sfx('hurt')}}
-  if(p.hunger<=0)p.hp-=1.5*dt;
+  if(p.hunger<=0&&!p.down){p.hp=0;toast('😵 배가 너무 고파서 쓰러졌어요!');die();return}
   const fr=fireR();
   if(fr&&Math.hypot(p.x,p.z)<fr*.9&&p.hunger>30)p.hp=Math.min(100,p.hp+2*dt);
   if(actHeld&&p.atk<=0)doAction(true);
@@ -1008,7 +1012,9 @@ function die(){
   const p=G.p;p.hp=0;actHeld=false;
   if(G.job==='doctor'&&G.reviveCd<=0){p.down=-1;if(G.mode==='solo')paused=true;$('revive').classList.remove('hide');return}
   if(G.mode==='solo'){end(false,G.job==='doctor'?'쓰러졌어요… (치료하기는 2분에 한 번만 쓸 수 있어요)':'쓰러졌어요… 밤에는 모닥불 빛 안에 있어요.');return}
-  p.down=10;$('down').classList.remove('hide');
+  if(!p.usedRespawn){p.usedRespawn=true;p.down=10;$('downTitle').textContent='😵 쓰러졌어요!'}
+  else{p.down=-2;$('downTitle').textContent='😵 쓰러졌어요!';$('downTxt').textContent='모닥불로 돌아가는 건 처음 한 번뿐이에요. 🩺 의사 친구가 와서 치료해 줘야 일어날 수 있어요.'}
+  $('down').classList.remove('hide');
 }
 function hurt(n){const p=G.p;if(p.inv>0||p.down)return;p.hp-=n;p.hurt=.3;p.inv=.4;sfx('hurt')}
 function fed(k,cooked){
@@ -1036,6 +1042,8 @@ function worldTick(dt){
   if(G.night&&!pn)onNight();
   localPlayer(dt);
   if(!running)return;
+  if(G.mode==='host'){const ks=Object.values(R).filter(r=>r.ok);
+    if(G.p.down===-2&&ks.every(r=>r.waiting)){G.allDownT=(G.allDownT||0)+dt;if(G.allDownT>3){finish(false,'모두 쓰러져서 치료해 줄 사람이 없어요…');return}}else G.allDownT=0}
   for(const k in R)R[k].inv-=dt;
   const L=targets(),fr=fireR(),safe=t=>fr&&Math.hypot(t.x,t.z)<fr*.9;
   for(const it of G.drops){
@@ -1163,7 +1171,7 @@ function actionInfo(){
   if(p.sit)return {l:'일어나기',i:'🚶',k:'stand'};
   if(Math.hypot(p.x,p.z)<9&&G.inv.log>0&&G.fire.lvl<FIRE_MAX)return {l:'장작 넣기',i:'🔥',k:'fire'};
   if(p.y<1&&dist(p.x,p.z,BENCH.x,BENCH.z)<4.5)return {l:'만들기',i:'🔨',k:'craft'};
-  if(p.y<1&&(dist(p.x,p.z,CRATE.x,CRATE.z)<4.5||nearFurn('box',p.x,p.z,3)))return {l:'가구 보관함',i:'📦',k:'stash'};
+  if(p.y<1&&(dist(p.x,p.z,CRATE.x,CRATE.z)<4.5||nearFurn('box',p.x,p.z,3)))return {l:'보관함',i:'📦',k:'stash'};
   if(G.trader&&D(p,G.trader)<6)return {l:'거래하기',i:'🤝',k:'trade'};
   const dr=G.caves.find(c=>!c.open&&dist(p.x,p.z,c.dx,c.dz)<4.5);
   if(dr)return G.inv.key>0?{l:'문 열기',i:'🗝️',k:'door',o:dr}:{l:'열쇠 필요',i:'🔒',k:'locked'};
@@ -1236,6 +1244,14 @@ function perform(a,ac){
     for(const d of G.deer){if(d.gone>0)continue;if(dA(d.x,d.z)<32){d.gone=10;d.m.g.visible=false;n++}}
     pm(ac,n?'🏮 빛을 비추자 사슴이 사라졌어요! (10초 동안 안 나와요)':'🏮 가까이에 사슴이 없어요',0,n?'win':null);return;
   }
+  if(ty==='iput'||ty==='itake'){
+    const k=String(a[1]);if(!INV_KEYS.includes(k)||!(dA(CRATE.x,CRATE.z)<9||G.furn.some(f=>f.type==='box'&&dA(f.x,f.z)<7)))return;
+    const all=a[2]==='all';
+    if(ty==='iput'){const n=all?P.inv[k]:Math.min(1,P.inv[k]);P.inv[k]-=n;G.istash[k]+=n}
+    else{let n=all?G.istash[k]:Math.min(1,G.istash[k]);n=Math.min(n,Math.max(0,P.cap-sackUsed(P)));
+      if(n<=0){pm(ac,`🎒 자루가 꽉 찼어요 (${P.cap}칸)`);return}G.istash[k]-=n;P.inv[k]+=n}
+    if(!$('stashOv').classList.contains('hide'))renderStash();return;
+  }
   if(ty==='ftake'||ty==='fput'){
     if(!(dA(CRATE.x,CRATE.z)<9||G.furn.some(f=>f.type==='box'&&dA(f.x,f.z)<7)))return;
     if(ty==='ftake'){const t=String(a[1]);if(!FURN[t]||G.fstash[t]<=0||P.carry)return;G.fstash[t]--;P.carry=t;pm(ac,`🙌 ${FURN[t].e} ${FURN[t].n}를 들었어요. 🪑 놓기 버튼으로 놓아요`)}
@@ -1295,6 +1311,7 @@ function chop(t,ac,useSaw){
     removeTreeLocal(t);ev({k:'tc',id:t.id});G.stats.trees++;sfxAt('fall',t.x,t.z);
     if(t.id<G.initTid)G.rmIds.add(t.id);else G.added.delete(t.id);
     const n=ac.job==='lumber'?5:3;for(let i=0;i<n;i++)drop(Math.random()<.65?'log':'sapling',t.x,t.z);
+    {const P=pOf(ac);if(sackUsed(P)>=P.cap)pm(ac,'🎒 자루가 꽉 차서 통나무가 땅에 떨어져 있어요. 고기를 먹거나 모닥불에 통나무를 넣어 칸을 비우세요',1)}
   }
 }
 function feedFire(ac){
@@ -1342,8 +1359,9 @@ function healTarget(){
 }
 function receiveHeal(){
   const p=G.p;
+  p.hunger=Math.max(p.hunger,40);
   if(p.down>0){p.down=0;p.hp=60;p.inv=2;$('down').classList.add('hide')}
-  else if(p.down<0){p.down=0;p.hp=60;p.inv=2;$('revive').classList.add('hide');paused=false}
+  else if(p.down<0){p.down=0;p.hp=60;p.inv=2;$('revive').classList.add('hide');$('down').classList.add('hide');paused=false}
   else p.hp=Math.min(100,p.hp+35);
   toast('🩺 의사 친구가 치료해 줬어요!');sfx('key');
 }
@@ -1378,7 +1396,7 @@ $('giveBtn').onclick=()=>act(['give']);
 $('lanternBtn').onclick=()=>act(['buy','lantern']);
 $('shopClose').onclick=closeShop;
 $('reviveBtn').onclick=()=>{
-  const p=G.p;p.hp=60;p.inv=2;p.down=0;G.reviveCd=120;
+  const p=G.p;p.hp=60;p.inv=2;p.down=0;G.reviveCd=120;p.hunger=Math.max(p.hunger,40);
   if(G.mode!=='client')for(const e of hostiles()){const d=D(e,p);if(d<25&&d>0){e.x=p.x+(e.x-p.x)/d*28;e.z=p.z+(e.z-p.z)/d*28}if(e.deer)e.stun=4}
   $('revive').classList.add('hide');paused=false;toast('🩺 다시 일어났어요!');
 };
@@ -1465,7 +1483,7 @@ function readSave(){try{const s=JSON.parse(localStorage.getItem(SAVE_KEY)||'null
 function clearSave(){try{localStorage.removeItem(SAVE_KEY)}catch(_){}}
 function writeSave(){
   if(!G||G.mode==='client'||!running||G.won)return;
-  const sv={v:3,me:packP(Object.assign({},G.me,{kids:[],carry:G.me.carry})),fs:FKEYS.map(k=>G.fstash[k]),fu:G.furn.map(furnRec),
+  const sv={v:3,is:INV_KEYS.map(k=>G.istash[k]),me:packP(Object.assign({},G.me,{kids:[],carry:G.me.carry})),fs:FKEYS.map(k=>G.fstash[k]),fu:G.furn.map(furnRec),
     stt:[G.stats.trees,G.stats.kills,G.stats.furn],at:Date.now(),job:G.job,seed:G.seed,day:G.day,fire:[G.fire.lvl,G.fire.prog],
     rain:[...G.rainDays],rm:[...G.rmIds],ad:[...G.added.values()],
     gr:G.growing.map(g=>[g.id,q10(g.x),q10(g.z),Math.round(g.t)]),
@@ -1480,6 +1498,7 @@ function applySave(sv){
   if(Array.isArray(sv.fire)){G.fire.lvl=clamp(num(sv.fire[0])|0,0,FIRE_MAX);G.fire.prog=Math.max(0,num(sv.fire[1])|0)}
   unpackP(G.me,sv.me);G.me.kids=[];
   if(Array.isArray(sv.fs))FKEYS.forEach((k,i)=>G.fstash[k]=Math.max(0,num(sv.fs[i])|0));
+  if(Array.isArray(sv.is))INV_KEYS.forEach((k,i)=>G.istash[k]=Math.max(0,num(sv.is[i])|0));
   G.rainDays=new Set((Array.isArray(sv.rain)?sv.rain:[]).map(d=>num(d)|0));G.rain=G.rainDays.has(day);
   (sv.rm||[]).forEach(id=>{const t=G.tmap.get(num(id,-1));if(t){removeTreeLocal(t);G.rmIds.add(t.id)}});
   (sv.ad||[]).forEach(rec=>{if(Array.isArray(rec)&&!G.tmap.has(num(rec[0],-1))){addTreeRec(rec);if(G.tmap.has(num(rec[0],-1)))G.added.set(num(rec[0]),rec)}});
@@ -1642,7 +1661,7 @@ function isHostMsg(msg){
   return false;
 }
 function sendPresence(){
-  const p=G.p,fl=(p.moving?1:0)|(p.down?2:0)|(p.swing>0?4:0)|(p.sit?(p.sit.lie?32:16):0);
+  const p=G.p,fl=(p.moving?1:0)|(p.down?2:0)|(p.down===-2?64:0)|(p.swing>0?4:0)|(p.sit?(p.sit.lie?32:16):0);
   const o={n:nick,j:G.job,p:[q10(p.x),q10(p.y),q10(p.z),Math.round(p.rot*100),fl|(p.onGround?0:8),Math.max(0,Math.round(p.hp)),Math.max(0,TOOL_KEYS.indexOf(G.held))]};
   if(G.mode==='host')o.h=1;else{o.q=outbox;o.need=null}
   ROOM.presence(o).catch(()=>{});
@@ -1665,7 +1684,7 @@ function updateRemotes(dt){
     }
     r.n=cleanName(pre.n);const pp=pre.p;
     r.tx=clamp(num(pp[0])/10,-300,300);r.ty=clamp(num(pp[1])/10,0,30);r.tz=clamp(num(pp[2])/10,-300,300);r.tr=num(pp[3])/100;
-    const fl=num(pp[4]);r.sitting=!!(fl&16);r.lying=!!(fl&32);r.moving=!!(fl&1);r.down=!!(fl&2);r.swinging=!!(fl&4);r.air=!!(fl&8);r.hp=clamp(num(pp[5],100),0,100);r.held=TOOL_KEYS[num(pp[6])|0]||'axe';
+    const fl=num(pp[4]);r.waiting=!!(fl&64);r.sitting=!!(fl&16);r.lying=!!(fl&32);r.moving=!!(fl&1);r.down=!!(fl&2);r.swinging=!!(fl&4);r.air=!!(fl&8);r.hp=clamp(num(pp[5],100),0,100);r.held=TOOL_KEYS[num(pp[6])|0]||'axe';
     if(!r.ok){r.x=r.tx;r.y=r.ty;r.z=r.tz;r.rot=r.tr;r.ok=true}
     if(G.mode==='host'&&Array.isArray(pre.q)){
       for(const a of pre.q){if(!Array.isArray(a))continue;const s=num(a[0]);if(s>r.lastSeq){r.lastSeq=s;perform(a.slice(1),r)}}
@@ -1705,7 +1724,7 @@ function sendSnap(){
     tg:G.target,cg:G.caves.map(c=>c.guards),e:ents.slice(0,90),
     d:G.drops.map(it=>[nd(it),it]).filter(x=>x[0]<90).sort((a,b)=>a[0]-b[0]).slice(0,50).map(([,it])=>[it.id,INV_KEYS.indexOf(it.type),q10(it.x),q10(it.z)]),
     p:G.proj.slice(0,12).map(b=>[b.id,q10(b.x),q10(b.z),q10(b.y),q10(b.vx),q10(b.vz),b.gun?1:0]),
-    tr:G.trader?[INV_KEYS.indexOf(G.trader.req.type),G.trader.req.q]:0,fs:FKEYS.map(k=>G.fstash[k])};
+    tr:G.trader?[INV_KEYS.indexOf(G.trader.req.type),G.trader.req.q]:0,fs:FKEYS.map(k=>G.fstash[k]),is:INV_KEYS.map(k=>G.istash[k])};
   while(bytes(s)>3800&&(s.e.length>8||s.d.length)){if(s.e.length>8)s.e.splice(-6);else s.d.splice(-6)}
   ROOM.emit('snap',s).catch(()=>{});
 }
@@ -1789,6 +1808,7 @@ function applySnap(msg){
   const mine=s.pv&&typeof s.pv==='object'?s.pv[myPeer]:null;if(Array.isArray(mine))unpackP(G.me,mine);
   if(INV_KEYS.reduce((a,k)=>a+G.inv[k],0)>before&&$('stashOv').classList.contains('hide')&&$('shop').classList.contains('hide'))sfx('pickup',.8)}
   if(Array.isArray(s.fs))FKEYS.forEach((k,i)=>G.fstash[k]=Math.max(0,num(s.fs[i])|0));
+  if(Array.isArray(s.is))INV_KEYS.forEach((k,i)=>G.istash[k]=Math.max(0,num(s.is[i])|0));
   if(!$('stashOv').classList.contains('hide'))renderStash();
   if(craftOpen())renderCraft();
   if(Array.isArray(s.kc))s.kc.forEach((v,i)=>{const kd=G.kids[i];if(kd)kd.carried=num(v)===1});
@@ -2106,7 +2126,7 @@ function sync(dt){
     if(!ins&&D(b,p)<(b.cult?90:55))lab(b.x,b.nf*FH+3,b.z,G.chests[b.ci].opened?b.label:b.label+' · 꼭대기에 상자',b.cult?'deer':'');
   }
   if(dist(BENCH.x,BENCH.z,p.x,p.z)<40)lab(BENCH.x,2.6,BENCH.z,'🔨 작업대','trader');
-  {const tot=FKEYS.reduce((a,k)=>a+G.fstash[k],0);if(dist(CRATE.x,CRATE.z,p.x,p.z)<40)lab(CRATE.x,2.8,CRATE.z,'📦 가구 보관함'+(tot?` · ${tot}개`:''),'trader')}
+  {const tot=FKEYS.reduce((a,k)=>a+G.fstash[k],0)+INV_KEYS.reduce((a,k)=>a+G.istash[k],0);if(dist(CRATE.x,CRATE.z,p.x,p.z)<40)lab(CRATE.x,2.8,CRATE.z,'📦 보관함'+(tot?` · ${tot}개`:''),'trader')}
   G.fountains.forEach((f,i)=>{f.scale.y=1+Math.sin(t*3+i)*.15;f.position.y=Math.sin(t*3+i)*.2});
   if(G.play&&dist(G.play.x,G.play.z,p.x,p.z)<35)lab(G.play.x,6,G.play.z,'🛝 숲속 놀이터','');
   if(G.carry)lab(p.x,p.y+(p.sit?3.6:5.9),p.z,`🙌 ${FURN[G.carry].e}`,'');
