@@ -51,6 +51,7 @@ label.fl{font-size:19px;font-weight:700}
 .bar i{display:block;height:100%;transition:width .2s}
 #inv{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;max-width:200px;font-size:15px}
 #inv span{background:rgba(255,255,255,.13);border-radius:8px;padding:1px 6px}
+#inv span.full{background:rgba(230,60,60,.8)}
 .ic{width:22px;height:22px;vertical-align:-5px;image-rendering:pixelated}
 .srow{display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:1px dashed var(--rule);font-size:19px;font-weight:700}
 .srow .nm{flex:1;min-width:0;line-height:1.2}.srow .ct{font-size:15px;color:var(--sub);font-weight:400}
@@ -623,6 +624,9 @@ function newGame(job,seed,mode){
     for(let i=0;i<5;i++){const a=i/5*Math.PI*2+.3,hx=LAVA.x+Math.cos(a)*30,hz=LAVA.z+Math.sin(a)*30,m=mkMammoth();m.g.position.set(hx,0,hz);dyn.add(m.g);
       G.animals.push({id:G.nid++,kind:'mammoth',x:hx,z:hz,hp:AK.mammoth.hp,max:AK.mammoth.hp,wx:0,wz:0,wt:0,cd:0,hit:0,dead:false,m,ry:rand(0,6),mv:false,r:AK.mammoth.r,hx,hz})}
     for(let i=0;i<10;i++)dropAt('scrap',G.play.x+rand(-9,9),G.play.z+rand(-9,9));
+    {const b=G.blds.find(b=>b.cult);if(b){const W2=(lx,lz)=>[b.x+lx*b.c+lz*b.s,b.z-lx*b.s+lz*b.c];
+      for(const [lx,lz] of [[-6,2],[6,2],[-6,-1.5],[6,-1.5],[0,4],[-3,13],[3,13],[-7,12],[7,12],[0,15]]){const [x,z]=W2(lx,lz),av=cultAvatar();av.g.position.set(x,0,z);dyn.add(av.g);
+        G.cult.push({id:G.nid++,x,z,hp:3,max:3,cd:0,hit:0,dead:false,r:1.2,av,ry:rand(0,6),guard:true,hx:x,hz:z})}}}
     const n=rint(1,3);while(G.rainDays.size<n)G.rainDays.add(rint(2,98));
   }
   for(let i=0;i<RN;i++)resetDrop(i,true);
@@ -939,7 +943,7 @@ function mkTrader(req){
 function onMorning(){
   say(`☀️ ${G.day}일째 아침`,0,'morning');
   G.rain=G.rainDays.has(G.day);if(G.rain)say('🌧️ 비가 와요!');
-  if(G.cult.length){G.cult.forEach(removeEnt);G.cult=[];say('신도들이 숲으로 사라졌어요')}
+  {const raid=G.cult.filter(c=>!c.guard);if(raid.length){raid.forEach(removeEnt);G.cult=G.cult.filter(c=>c.guard);say('신도들이 신도의 집으로 돌아갔어요')}}
   if(G.deer.length){G.deer.forEach(removeEnt);G.deer=[];say('🦌 사슴이 숲으로 돌아갔어요')}
   if(G.day%5===0&&G.day<MAXDAY){G.trader=mkTrader(newReq());say('🧔 장사하는 아저씨가 기지에 왔어요!',1,'bell')}
   if(G.day%10===0&&G.day<MAXDAY)say('⚠️ 오늘 밤 신도 20명이 쳐들어와요! 모닥불을 지키세요',1,'warn');
@@ -1036,6 +1040,7 @@ function worldTick(dt){
   const L=targets(),fr=fireR(),safe=t=>fr&&Math.hypot(t.x,t.z)<fr*.9;
   for(const it of G.drops){
     it.x+=it.vx*dt;it.z+=it.vz*dt;it.vx*=.9;it.vz*=.9;it.age+=dt;
+    if(it.age>300&&it.type!=='key'&&it.type!=='scrap'){it.dead=true;dyn.remove(it.m);continue}
     if(it.age<=.35)continue;
     const t=L.find(t=>dist(t.x,t.z,it.x,it.z)<3);if(!t)continue;
     const P=pOf(t),tac={key:t.key};
@@ -1067,6 +1072,14 @@ function worldTick(dt){
   }
   for(const c of G.cult){
     c.cd-=dt;c.hit-=dt;const n=nearestT(c,L),sp=c.hit>0?3:10;
+    if(c.guard){
+      const home=dist(c.x,c.z,c.hx,c.hz),ch=!!n.t&&n.d<22&&home<40&&n.t.y<1.2;
+      const gx=ch?n.t.x:c.hx,gz=ch?n.t.z:c.hz,dx=gx-c.x,dz=gz-c.z,dp=Math.max(.01,Math.hypot(dx,dz));
+      if(dp>(ch?1.5:.8)){c.x+=dx/dp*sp*.9*dt;c.z+=dz/dp*sp*.9*dt;c.ry=Math.atan2(dx,dz)}else if(n.t)c.ry=Math.atan2(n.t.x-c.x,n.t.z-c.z);
+      pushWalls(c,.8);
+      if(ch&&n.d<2.4&&c.cd<=0){hurtT(n.t,12);c.cd=1}
+      continue;
+    }
     const chase=!!n.t&&(n.d<35||Math.hypot(c.x,c.z)<fireR()+14);
     const tx=chase?n.t.x:0,tz=chase?n.t.z:0,dx=tx-c.x,dz=tz-c.z,dp=Math.max(.01,Math.hypot(dx,dz));
     if(chase||dp>4){c.x+=dx/dp*sp*dt;c.z+=dz/dp*sp*dt;c.ry=Math.atan2(dx,dz)}
@@ -1097,8 +1110,8 @@ function worldTick(dt){
   }
   G.proj=G.proj.filter(b=>!b.dead);
   G.animals=G.animals.filter(a=>{if(a.dead)removeEnt(a);return !a.dead});
-  const had=G.cult.length;G.cult=G.cult.filter(c=>{if(c.dead)removeEnt(c);return !c.dead});
-  if(had&&!G.cult.length)say('🎉 신도들을 모두 물리쳤어요!',1,'win');
+  const had=G.cult.filter(c=>!c.guard).length;G.cult=G.cult.filter(c=>{if(c.dead)removeEnt(c);return !c.dead});
+  if(had&&!G.cult.some(c=>!c.guard))say('🎉 신도들을 모두 물리쳤어요!',1,'win');
   G.respawn-=dt;
   if(G.respawn<=0){G.respawn=5;for(const k in TARGET){const tg=TARGET[k]+(k==='wolf'&&G.night?8:0);if(G.animals.filter(a=>a.kind===k&&a.guard===undefined).length<tg)spawnAnimal(k)}}
   G.kids.forEach((kid,i)=>{
@@ -1458,7 +1471,7 @@ function writeSave(){
     gr:G.growing.map(g=>[g.id,q10(g.x),q10(g.z),Math.round(g.t)]),
     co:G.chests.map((c,i)=>c.opened?i:-1).filter(i=>i>=0),dr:G.caves.map((c,i)=>c.open?i:-1).filter(i=>i>=0),
     kf:G.kids.map((k,i)=>k.found?[i,k.slot]:null).filter(Boolean),tg:G.target,cg:G.caves.map(c=>c.guards),
-    mmc:G.animals.filter(a=>a.kind==='mammoth').length,
+    mmc:G.animals.filter(a=>a.kind==='mammoth').length,cgc:G.cult.filter(c=>c.guard).length,
     dp:G.drops.map(d=>[d.type,q10(d.x),q10(d.z)]),hp:G.p.hp>0?Math.round(G.p.hp):60,hu:Math.round(G.p.hunger),trq:G.trader?G.trader.req:null};
   try{localStorage.setItem(SAVE_KEY,JSON.stringify(sv))}catch(_){}
 }
@@ -1480,6 +1493,7 @@ function applySave(sv){
     gs.slice(keep).forEach(a=>{removeEnt(a);a.dead=true});cv.guards=keep;
   });
   {const mm=G.animals.filter(a=>a.kind==='mammoth'),keep=clamp(num(sv.mmc,5)|0,0,5);mm.slice(keep).forEach(a=>{removeEnt(a);a.dead=true})}
+  {const cg=G.cult.filter(c=>c.guard),keep=clamp(num(sv.cgc,cg.length)|0,0,cg.length);cg.slice(keep).forEach(c=>removeEnt(c));const gone=new Set(cg.slice(keep));G.cult=G.cult.filter(c=>!gone.has(c))}
   G.animals=G.animals.filter(a=>!a.dead);
   for(const d of G.drops)dyn.remove(d.m);G.drops=[];
   (sv.dp||[]).forEach(d=>{if(Array.isArray(d)&&ITEM[d[0]])dropAt(d[0],num(d[1])/10,num(d[2])/10)});
@@ -1689,7 +1703,7 @@ function sendSnap(){
   const pv={};for(const k in R)pv[k]=packP(pOf({key:k}));
   const s={t:Math.round(G.t*100)/100,r:G.rain?1:0,f:[G.fire.lvl,G.fire.prog],pv,kc:G.kids.map(k=>k.found?2:k.carrier?1:0),
     tg:G.target,cg:G.caves.map(c=>c.guards),e:ents.slice(0,90),
-    d:G.drops.slice(0,45).map(it=>[it.id,INV_KEYS.indexOf(it.type),q10(it.x),q10(it.z)]),
+    d:G.drops.map(it=>[nd(it),it]).filter(x=>x[0]<90).sort((a,b)=>a[0]-b[0]).slice(0,50).map(([,it])=>[it.id,INV_KEYS.indexOf(it.type),q10(it.x),q10(it.z)]),
     p:G.proj.slice(0,12).map(b=>[b.id,q10(b.x),q10(b.z),q10(b.y),q10(b.vx),q10(b.vz),b.gun?1:0]),
     tr:G.trader?[INV_KEYS.indexOf(G.trader.req.type),G.trader.req.q]:0,fs:FKEYS.map(k=>G.fstash[k])};
   while(bytes(s)>3800&&(s.e.length>8||s.d.length)){if(s.e.length>8)s.e.splice(-6);else s.d.splice(-6)}
@@ -2152,7 +2166,7 @@ function hud(){
   if(G.carry)parts.push(`🙌 ${FURN[G.carry].e}${FURN[G.carry].n}`);
   if(G.ammo)parts.push(`🔫 ${G.ammo}발`);
   parts.push(G.axe==='good'?'🪓 좋은 도끼':'🪓 낡은 도끼');if(hasSaw())parts.push('🪚 톱');
-  const h=parts.map(s=>`<span>${s}</span>`).join('');if(h!==lastHud){$('inv').innerHTML=h;lastHud=h}
+  const full=sackUsed()>=G.cap;const h=parts.map(s=>`<span${full&&s.startsWith('🎒')?' class="full"':''}>${full&&s.startsWith('🎒')?s+' 꽉 참!':s}</span>`).join('');if(h!==lastHud){$('inv').innerHTML=h;lastHud=h}
   const a=actionInfo();if($('actTxt').textContent!==a.l){$('actTxt').textContent=a.l;$('actIco').textContent=a.i}
   $('bShoot').classList.add('hide');renderHotbar();
   $('shootIco').textContent=G.ammo>0?'🔫':'🏹';$('shootTxt').textContent=G.ammo>0?`${G.ammo}발`:'활';
