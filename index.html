@@ -261,6 +261,15 @@ h1 .num{display:inline-block;border:2.5px solid currentColor;border-radius:50%;w
   </div>
 </div>
 
+<div class="ov dim hide" id="jobOv">
+  <div class="paper">
+    <h1>🔄 직업 바꾸기</h1>
+    <p class="help" id="jobDia"></p>
+    <div id="jobList"></div>
+    <button class="go ghost" id="jobClose">닫기</button>
+  </div>
+</div>
+
 <div class="ov dim hide" id="quit">
   <div class="paper">
     <h1>🚪 나갈까요?</h1>
@@ -545,9 +554,11 @@ const JOBS={
 };
 const META_KEY='forest99-meta';
 function readMeta(){try{const m=JSON.parse(localStorage.getItem(META_KEY)||'null');if(m&&typeof m==='object')return {dia:Math.max(0,num(m.dia)|0),un:Array.isArray(m.un)?m.un.filter(k=>JOBS[k]):[]}}catch(_){}return {dia:0,un:[]}}
-function saveMeta(m){try{localStorage.setItem(META_KEY,JSON.stringify(m))}catch(_){}}
+let diaNow=null;
+function saveMeta(m){diaNow=m.dia;try{localStorage.setItem(META_KEY,JSON.stringify(m))}catch(_){}}
+const diaCount=()=>diaNow===null?(diaNow=readMeta().dia):diaNow;
 const jobLocked=k=>!!JOBS[k].price&&!readMeta().un.includes(k);
-function addDia(n){const m=readMeta();m.dia+=n;saveMeta(m);updateDiaUI()}
+function addDia(n){const m=readMeta();m.dia+=n;saveMeta(m);updateDiaUI();if(running)banner(`💎 다이아몬드 +${n}! (모두 ${m.dia}개)`)}
 function updateDiaUI(){const m=readMeta();const el=$('diaCount');if(el)el.textContent=`💎 ${m.dia}`;
   document.querySelectorAll('.job').forEach(b=>{const k=b.dataset.job;if(!k||!JOBS[k])return;const lk=jobLocked(k);b.classList.toggle('locked',lk);const t=b.querySelector('.lk');if(t)t.textContent=lk?` 🔒 💎${JOBS[k].price}`:''})}
 const ITEM={
@@ -1041,10 +1052,10 @@ function craftOpen(){return !$('craftOv').classList.contains('hide')}
 function renderCraft(){
   const L=$('craftList'),bl=G.bench||1;
   let h=`<p class="help">🔨 작업대 Lv.${bl} · 🪵 ${G.inv.log} · 🔩 ${G.inv.scrap} · 놓은 가구 ${G.furn.length}/${FMAX}<br>가구는 📦 보관함에 들어가요 (냄비는 바로 놓여요)</p>`;
-  if(bl<3){const c=BENCH_UP[bl+1];h+=`<div class="srow"><span class="nm">⬆️ 작업대 Lv.${bl+1} <span class="ct">· ${costTxt(c)}</span><br><span class="ct">새로운 물건을 만들 수 있어요</span></span><button class="sbtn" data-a="benchup" ${canPay(G.me,c)?'':'disabled'}>올리기</button></div>`}
+  if(bl<3){const c=BENCH_UP[bl+1];h+=`<div class="srow" style="background:rgba(255,122,26,.12);border-radius:10px;padding:6px"><span class="nm">⬆️ 작업대를 Lv.${bl+1}로 올리기 <span class="ct">· ${costTxt(c)}</span><br><span class="ct">‘작업대 Lv.${bl+1}’이라고 적힌 물건들이 열려요 (모닥불 레벨과는 따로예요)</span></span><button class="sbtn" data-a="benchup" ${canPay(G.me,c)?'':'disabled'}>${canPay(G.me,c)?'올리기':'재료 부족'}</button></div>`}
   const row=(k,F,ok,lbl)=>`<div class="srow"><span class="nm">${F.e} ${F.n} <span class="ct">· ${costTxt(F.cost)}</span><br><span class="ct">${F.d}</span></span><button class="sbtn" data-a="craft" data-k="${k}" ${ok?'':'disabled'}>${lbl}</button></div>`;
-  h+=FKEYS.map(k=>{const F=FURN[k],lv=F.lv||1;return lv>bl?row(k,F,false,`Lv.${lv}`):row(k,F,canPay(G.me,F.cost),'만들기')}).join('');
-  h+=Object.entries(CITEM).map(([k,F])=>F.lv>bl?row(k,F,false,`Lv.${F.lv}`):F.has(G.me)?row(k,F,false,'있어요'):row(k,F,canPay(G.me,F.cost),'만들기')).join('');
+  h+=FKEYS.map(k=>{const F=FURN[k],lv=F.lv||1;return lv>bl?row(k,F,false,`작업대 Lv.${lv}`):canPay(G.me,F.cost)?row(k,F,true,'만들기'):row(k,F,false,'재료 부족')}).join('');
+  h+=Object.entries(CITEM).map(([k,F])=>F.lv>bl?row(k,F,false,`작업대 Lv.${F.lv}`):F.has(G.me)?row(k,F,false,'있어요'):canPay(G.me,F.cost)?row(k,F,true,'만들기'):row(k,F,false,'재료 부족')).join('');
   L.innerHTML=h;
 }
 const GRINDS=[['junk',1,{scrap:2},'🥫 고물 1 → 🔩 고철 2'],['sapling',2,{log:1},'🌱 묘목 2 → 🪵 통나무 1'],['rabbitFoot',2,{scrap:1},'🐾 토끼발 2 → 🔩 고철 1'],['ramHorn',1,{scrap:4},'🐏 숫양 뿔 1 → 🔩 고철 4']];
@@ -1054,6 +1065,25 @@ function renderGrind(){
 function openGrind(){paused=true;actHeld=false;renderGrind();$('grindOv').classList.remove('hide')}
 $('grindClose').onclick=()=>{$('grindOv').classList.add('hide');paused=false};
 $('grindList').onclick=e=>{const b=e.target&&e.target.closest&&e.target.closest('button[data-i]');if(!b||b.disabled)return;act(['grind',+b.dataset.i]);if(G.mode==='client')setTimeout(()=>{if(!$('grindOv').classList.contains('hide'))renderGrind()},400)};
+const JOB_DESC={lumber:'나무를 베면 통나무·묘목이 5개',doctor:'나와 친구를 치료',hunter:'칼·활·톱을 써요',farmer:'밭에서 당근을 2배로',explorer:'지도·랜턴, 20% 빨라요',warrior:'창, 받는 피해 15% 감소'};
+function renderJobs(){
+  $('jobDia').textContent=`💎 ${diaCount()}개 · 가방 물건은 그대로예요`;
+  $('jobList').innerHTML=Object.keys(JOBS).map(k=>{const J=JOBS[k],lk=jobLocked(k),cur=k===G.job;
+    return `<div class="srow"><span class="nm">${J.e} ${J.n}<br><span class="ct">${JOB_DESC[k]}</span></span>${cur?'<button class="sbtn" disabled>지금 직업</button>':lk?`<button class="sbtn" data-j="${k}" data-u="1" ${diaCount()>=J.price?'':'disabled'}>💎${J.price} 열기</button>`:`<button class="sbtn" data-j="${k}">바꾸기</button>`}</div>`}).join('');
+}
+function openJobs(){paused=true;actHeld=false;renderJobs();$('jobOv').classList.remove('hide')}
+$('jobClose').onclick=()=>{$('jobOv').classList.add('hide');paused=false};
+$('jobList').onclick=e=>{
+  const b=e.target&&e.target.closest&&e.target.closest('button[data-j]');if(!b||b.disabled)return;const k=b.dataset.j;
+  if(b.dataset.u){const m=readMeta();if(m.dia<JOBS[k].price)return;m.dia-=JOBS[k].price;if(!m.un.includes(k))m.un.push(k);saveMeta(m);updateDiaUI();toast(`🔓 ${JOBS[k].n} 직업을 열었어요!`);renderJobs();return}
+  changeJob(k);$('jobOv').classList.add('hide');paused=false;
+};
+function changeJob(k){
+  if(!JOBS[k]||jobLocked(k)||k===G.job)return;
+  G.job=k;dyn.remove(playerAv.g);
+  playerAv=avatar(Object.assign({skin:'#f2c99c',hair:'#4a2e1a',tool:true,s:.72,noShadow:true},JOBS[k].look));playerAv.g.rotation.order='YXZ';dyn.add(playerAv.g);
+  hotbarKey='';act(['job',k]);banner(`🔄 ${JOBS[k].e} ${JOBS[k].n}(으)로 바뀌었어요!`);sfx('levelup');writeSave();
+}
 function openCraft(){paused=true;actHeld=false;renderCraft();$('craftOv').classList.remove('hide')}
 function closeCraft(){$('craftOv').classList.add('hide');paused=false}
 $('craftClose').onclick=closeCraft;
@@ -1340,6 +1370,7 @@ function actionInfo(){
   if(Math.hypot(p.x,p.z)<9&&(G.inv.log>0||G.inv.ice>0||G.me.hand==='log'||G.me.hand==='ice')&&G.fire.lvl<FIRE_MAX)return {l:G.inv.ice>0?'얼음·장작 넣기':'장작 넣기',i:'🔥',k:'fire'};
   if(p.y<1&&dist(p.x,p.z,BENCH.x,BENCH.z)<4.5)return {l:'만들기',i:'🔨',k:'craft'};
   if(p.y<1&&dist(p.x,p.z,GRIND.x,GRIND.z)<4)return {l:'분쇄기',i:'⚙️',k:'grind'};
+  if(p.y<1&&dist(p.x,p.z,BOARD.x,BOARD.z)<4)return {l:'직업 바꾸기',i:'🔄',k:'jobchg'};
   if(G.hurtDeerAt&&dist(p.x,p.z,G.hurtDeerAt.x,G.hurtDeerAt.z)<4.5)return G.inv.bandage>0?{l:'붕대 감아 주기',i:'🩹',k:'helpdeer'}:{l:'붕대가 필요해요',i:'🦌',k:'needband'};
   {const fm=G.furn.find(f=>f.type==='farm'&&(f.carrots||0)>0&&dist(f.x,f.z,p.x,p.z)<3);if(fm&&p.y<1)return {l:'당근 캐기',i:'🥕',k:'harvest',o:fm}}
   if(!G.me.hand&&!G.carry&&sackUsed()>=G.cap){const d=G.drops.find(d=>dist(d.x,d.z,p.x,p.z)<2.6);if(d)return {l:'손으로 들기',i:'✋',k:'grab',o:d}}
@@ -1372,7 +1403,7 @@ function act(a){
 function doAction(held){
   if(!running||paused)return;const p=G.p;if(p.atk>0||p.down)return;
   const a=actionInfo();
-  if(held&&['grind','helpdeer','needband','harvest','grab','hput','tame','tune','trade','chest','door','locked','stash','needaxe','craft','sit','lie','torch','cook','stand','shine'].includes(a.k))return;
+  if(held&&['jobchg','grind','helpdeer','needband','harvest','grab','hput','tame','tune','trade','chest','door','locked','stash','needaxe','craft','sit','lie','torch','cook','stand','shine'].includes(a.k))return;
   if(a.k==='shoot'){shoot();return}
   p.atk=.32;
   if(a.k==='stand'){p.sit=null;return}
@@ -1381,6 +1412,7 @@ function doAction(held){
   if(a.k==='stash')return openStash();
   if(a.k==='craft')return openCraft();
   if(a.k==='grind')return openGrind();
+  if(a.k==='jobchg')return openJobs();
   if(a.k==='helpdeer')return act(['helpdeer']);
   if(a.k==='needband'){toast('🩹 붕대가 있으면 다친 사슴을 도와줄 수 있어요 (보물상자, 작업대)');return}
   if(a.k==='harvest')return act(['harvest',a.o.id]);
@@ -1475,6 +1507,7 @@ function perform(a,ac){
   if(ty==='bandage'){if(P.inv.bandage<=0)return;const to=String(a[1]);const tr=to===myPeer?{x:G.p.x,z:G.p.z}:R[to]?{x:R[to].tx,z:R[to].tz}:null;if(!tr||dA(tr.x,tr.z)>9)return;
     P.inv.bandage--;if(to===myPeer)receiveHeal('b');else ev({k:'heal',to,b:1});return}
   if(ty==='potion'){if(P.inv.potion<=0)return;P.inv.potion--;if(ac.key==='me')drinkPotion();else ev({k:'potion',to:ac.key});return}
+  if(ty==='job'){const k=String(a[1]);if(!JOBS[k])return;if(k==='explorer'){P.map=true;P.lantern=true}if(k==='warrior')P.spear=true;return}
   if(ty==='grind'){const g=GRINDS[num(a[1],-1)];if(!g||dA(GRIND.x,GRIND.z)>9)return;const [k,n,out]=g;if(P.inv[k]<n)return;P.inv[k]-=n;for(const [o,v] of Object.entries(out))P.inv[o]+=v;pm(ac,`⚙️ 드르륵! ${g[3]}`,0,'chop');if(!$('grindOv').classList.contains('hide'))renderGrind();return}
   if(ty==='benchup'){const bl=G.bench||1;if(bl>=3||dA(BENCH.x,BENCH.z)>9)return;const c=BENCH_UP[bl+1];if(!canPay(P,c)){pm(ac,`재료가 부족해요 (${costTxt(c)})`);return}for(const [k,v] of Object.entries(c))P.inv[k]-=v;G.bench=bl+1;ev({k:'bl',l:G.bench});say(`🔨 작업대가 Lv.${G.bench}이 됐어요! 새 물건을 만들 수 있어요`,1,'levelup');if(craftOpen())renderCraft();return}
   if(ty==='harvest'){const f=G.furn.find(f=>f.id===num(a[1],-1));if(!f||f.type!=='farm'||!f.carrots||dA(f.x,f.z)>6)return;let n=f.carrots*(ac.job==='farmer'?2:1);n=Math.min(n,Math.max(0,P.cap-sackUsed(P)));if(n<=0){pm(ac,`🎒 자루가 꽉 찼어요 (${P.cap}칸)`);return}P.inv.carrot+=n;f.carrots=0;farmVis(f);ev({k:'fc',id:f.id,c:0});pm(ac,`🥕 당근 ${n}개를 캤어요!`,0,'pickup');return}
@@ -1641,7 +1674,7 @@ function finish(win,msg){
 function end(win,msg){
   if(!running&&!$('over').classList.contains('hide'))return;
   running=false;actHeld=false;paused=false;
-  ['shop','revive','down','stashOv','craftOv','grindOv'].forEach(id=>$(id).classList.add('hide'));
+  ['shop','revive','down','stashOv','craftOv','grindOv','jobOv'].forEach(id=>$(id).classList.add('hide'));
   $('overTitle').textContent=win?'🎉 성공!':'😢 실패…';
   $('overMsg').textContent=msg+` (찾은 아이 ${G.target}/5 · 모닥불 Lv.${G.fire.lvl})`;
   if(win)startEnding(msg);else $('over').classList.remove('hide');
@@ -2279,7 +2312,7 @@ $('quitYes').onclick=()=>{
   writeSave();
   if(host){ev({k:'over',w:0,m:'방장이 게임을 나갔어요.'});flushEv()}
   running=false;actHeld=false;paused=false;
-  ['shop','revive','down','stashOv','craftOv','grindOv','hud','ctrl','joy','tb','hotbar'].forEach(id=>$(id).classList.add('hide'));
+  ['shop','revive','down','stashOv','craftOv','grindOv','jobOv','hud','ctrl','joy','tb','hotbar'].forEach(id=>$(id).classList.add('hide'));
   setTimeout(leaveRoom,host?600:0);
   $('lobby').classList.remove('hide');updateContinue();
 };
@@ -2401,7 +2434,7 @@ function sync(dt){
   lab(0,5+G.fire.lvl*.8,0,G.fire.lvl>=FIRE_MAX?'🔥 모닥불 Lv.5 (최고)':`🔥 모닥불 Lv.${G.fire.lvl} · 🪵 ${G.fire.prog}/${FIRE_NEED[G.fire.lvl]}`,'fire');
   // 아이 화살표
   const carryK=G.me.kids.length,kid=carryK?null:G.kids.find((k,i)=>!k.found&&!k.carrier&&!k.carried&&kidOpen(i));
-  if(dist(BOARD.x,BOARD.z,p.x,p.z)<35)lab(BOARD.x,4,BOARD.z,'📋 실종 아이 '+G.kids.map((k,i)=>k.found?'✅':kidOpen(i)?'🧒':'🔒').join(''),'trader');
+  if(dist(BOARD.x,BOARD.z,p.x,p.z)<35)lab(BOARD.x,4,BOARD.z,'📋 게시판 · 🔄 직업 바꾸기 · '+G.kids.map((k,i)=>k.found?'✅':kidOpen(i)?'🧒':'🔒').join(''),'trader');
   if(G.fogWall){const fr=fogR();G.fogWall.visible=G.fire.lvl<5;G.fogWall.scale.set(fr,1,fr)}
   arrowG.visible=!!(kid||carryK);
   if(carryK){
@@ -2451,6 +2484,7 @@ function hud(){
   const parts=[`🎒 ${sackUsed()}/${G.cap}`,`🪵 ${G.inv.log}`,`🌱 ${G.inv.sapling}`];
   if(G.me.kids.length)parts.push(`🧒 아이 ${G.me.kids.length}`);
   for(const k of INV_KEYS)if(k!=='log'&&k!=='sapling'&&G.inv[k])parts.push(`${itemLabel(k)} ${G.inv[k]}`);
+  parts.push(`💎 ${diaCount()}`);
   if(G.me.hand)parts.push(`✋ ${ITEM[G.me.hand].e}${ITEM[G.me.hand].n}`);
   if(G.carry)parts.push(`🙌 ${FURN[G.carry].e}${FURN[G.carry].n}`);
   if(G.ammo)parts.push(`🔫 ${G.ammo}발`);
